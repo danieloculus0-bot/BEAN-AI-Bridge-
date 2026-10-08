@@ -1,0 +1,22 @@
+name: BEAN Blind Vault Offline Tests
+on:
+  push:
+    branches: [experiment/remote-viewing-blind-vault]
+  pull_request:
+    paths: [experiments/remote_viewing/**]
+jobs:
+  blind-vault:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: python -m pip install cryptography
+      - name: Unit tests
+        run: python -m unittest discover -s experiments/remote_viewing/tests -v
