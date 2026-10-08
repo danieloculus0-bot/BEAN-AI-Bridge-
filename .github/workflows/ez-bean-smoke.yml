@@ -1,0 +1,29 @@
+name: EZ-BEAN cross-platform smoke and replay
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  synthetic-replay:
+    name: Generic ERP replay (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax check
+        run: python -m compileall -q src tests
+      - name: Repeatable smoke tests
+        run: python -m unittest discover -s tests -v
+      - name: Example ERP replay
+        run: python -m ezbean.demo
