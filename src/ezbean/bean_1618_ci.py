@@ -59,6 +59,16 @@ def run(out_dir: Path, use_bean: bool = False) -> dict:
                 reworked = detected
                 trace = [{'operation': op, 'status': ('hold_then_rework' if op == '80 Final Inspect' and reworked else 'completed'),
                           'evidence': f'SYN-WO-{i:04d}:{policy}:{j}', 'synthetic': True} for j, op in enumerate(ROUTE)]
+                # Controlled HOLD cannot advance to powder before containment and verification.
+                if inprocess:
+                    gate = next(x for x in trace if x['operation'] == '60 Precoat')
+                    gate['status'] = 'HOLD'
+                    powder_index = next(j for j,x in enumerate(trace) if x['operation'] == '70 Powder')
+                    trace[powder_index:powder_index] = [
+                        {'operation': '60A NCR/quarantine', 'status': 'contained', 'evidence': f'SYN-WO-{i:04d}:{policy}:NCR', 'synthetic': True},
+                        {'operation': '60B Correct / reverify', 'status': 'released_by_qualified_inspector', 'evidence': f'SYN-WO-{i:04d}:{policy}:reinspect', 'synthetic': True},
+                    ]
+                assert all(not (trace[j]['status'] == 'HOLD' and trace[j+1]['operation'] == '70 Powder') for j in range(len(trace)-1))
                 trace[0]['status'] = 'revision_checked'
                 trace[-3]['status'] = 'RMA_confirmed' if escape else 'no_RMA'
                 trace[-2]['status'] = 'containment_and_CAR' if escape else 'no_external_failure'
