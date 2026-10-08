@@ -1,0 +1,45 @@
+name: EZ-BEAN 1618 RMA CAR replay with native BEAN
+on:
+  push:
+    paths:
+      - 'src/ezbean/**'
+      - '.github/workflows/bean-rma-1618.yml'
+  workflow_dispatch:
+jobs:
+  full-replay:
+    name: Native BEAN ERP/RMA (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      PYTHONPATH: src
+    steps:
+      - name: Checkout EZ-BEAN bridge
+        uses: actions/checkout@v4
+      - name: Checkout BEAN core
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          path: bean_core
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile
+        run: python -m compileall -q src
+      - name: Existing generic regression suite
+        run: python -m unittest discover -s tests -v
+      - name: 1618 paired RMA replays and native BEAN event memory
+        run: python -m ezbean.bean_1618_ci --use-bean --out artifacts/bean_1618
+      - name: Upload experiment evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-rma-1618-${{ matrix.os }}
+          path: |
+            artifacts/bean_1618/summary.json
+            artifacts/bean_1618/sample_case.json
+            artifacts/bean_1618/trial_journal.jsonl
+            artifacts/bean_1618/native_bean_memory.sqlite
+          retention-days: 30
