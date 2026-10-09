@@ -2,7 +2,7 @@
 import pytest
 
 from experiments.evolution_lab.bridge_evolution import (
-    BASELINE, RULE_COMPARATOR, Policy, SimulatedAgent, evaluate, evolve, mutate,
+    BASELINE, RULE_COMPARATOR, Policy, SimulatedAgent, evaluate, evolve, generate_case, mutate,
 )
 
 
@@ -57,3 +57,26 @@ def test_verified_unchanged_state_does_not_become_false_belief():
 def test_invalid_search_size_rejected():
     with pytest.raises(ValueError):
         evolve(generations=0)
+
+
+def test_unseen_fault_profiles_are_scored_without_selection_leakage():
+    report = evolve(seed=1337, generations=3, population=12)
+    assert set(report["out_of_distribution"]) == {"correlated_noise", "delayed_sensors"}
+    for group in report["out_of_distribution"].values():
+        for mode in ("baseline", "rule_comparator", "evolved"):
+            assert group[mode]["episodes"] == 80
+            assert group[mode]["restart_state_retained"] == 80
+
+
+def test_correlated_fault_changes_sensor_evidence_but_not_ground_truth():
+    ordinary = generate_case(12000, "standard")
+    noisy = generate_case(12000, "correlated_noise")
+    assert ordinary["change_at"] == noisy["change_at"]
+    assert ordinary["changed"] == noisy["changed"]
+    assert [x[2] for x in ordinary["timeline"]] == [x[2] for x in noisy["timeline"]]
+    assert [x[:2] for x in ordinary["timeline"]] != [x[:2] for x in noisy["timeline"]]
+
+
+def test_unknown_sensor_profile_fails_closed():
+    with pytest.raises(ValueError):
+        generate_case(1, "unknown")
