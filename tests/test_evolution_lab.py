@@ -2,7 +2,7 @@
 import pytest
 
 from experiments.evolution_lab.bridge_evolution import (
-    BASELINE, RULE_COMPARATOR, Policy, SimulatedAgent, evaluate, evolve, generate_case, mutate,
+    BASELINE, RULE_COMPARATOR, Policy, SimulatedAgent, evaluate, evolve, evolve_generalist, generate_case, mutate,
 )
 
 
@@ -80,3 +80,26 @@ def test_correlated_fault_changes_sensor_evidence_but_not_ground_truth():
 def test_unknown_sensor_profile_fails_closed():
     with pytest.raises(ValueError):
         generate_case(1, "unknown")
+
+
+def test_agent_adapts_confirmation_requirement_after_false_probe():
+    policy = Policy(attention_threshold=0.3, confirmations=1, max_probes=3,
+                    learn_from_false_probes=True)
+    agent = SimulatedAgent(policy)
+    agent.observe(0, 1, 1, verify=lambda: 0)
+    assert agent.false_probes == 1 and agent.probes == 1
+    agent.observe(1, 1, 1, verify=lambda: 1)
+    assert agent.probes == 1
+    agent.observe(2, 1, 1, verify=lambda: 1)
+    assert agent.probes == 2
+    assert agent.belief == 1
+
+
+def test_generalist_lineage_reports_independent_mixed_holdout():
+    result = evolve_generalist(seed=917, generations=3, population=12)
+    assert set(result["by_profile"]) == {"standard", "correlated_noise", "delayed_sensors"}
+    assert result["train_seed_window"][1] < result["holdout_seed_window"][0]
+    for profile, scores in result["by_profile"].items():
+        assert scores["generalist"]["episodes"] == 80
+        assert scores["fixed_comparator"]["episodes"] == 80
+    assert result == evolve_generalist(seed=917, generations=3, population=12)
