@@ -169,8 +169,8 @@ def mutate(policy: Policy, rng: random.Random) -> Policy:
 
 def evolve(*, seed: int = 1337, generations: int = 6, population: int = 20) -> dict:
     """Use training outcomes for selection; untouched holdouts for final reporting."""
-    if generations < 1 or population < 2:
-        raise ValueError("generations must be >=1 and population must be >=2")
+    if not (1 <= generations <= 40 and 2 <= population <= 64):
+        raise ValueError("generations must be 1..40 and population 2..64")
     rng = random.Random(seed)
     train = list(range(500, 560))
     holdout = list(range(12000, 12080))
@@ -178,8 +178,12 @@ def evolve(*, seed: int = 1337, generations: int = 6, population: int = 20) -> d
     history = []
     for generation in range(generations):
         candidates = {BASELINE, RULE_COMPARATOR, *parents}
-        while len(candidates) < population:
+        attempts = 0
+        while len(candidates) < population and attempts < 2000:
             candidates.add(mutate(rng.choice(parents), rng))
+            attempts += 1
+        if len(candidates) < population:
+            raise RuntimeError("bounded mutation pool exhausted")
         scored = sorted(
             [(evaluate(p, train)["mean_score"], p) for p in candidates],
             key=lambda pair: (pair[0], -pair[1].confirmations, -pair[1].max_probes,
@@ -223,7 +227,7 @@ def evolve(*, seed: int = 1337, generations: int = 6, population: int = 20) -> d
 
 def evolve_generalist(*, seed: int = 917, generations: int = 6, population: int = 24) -> dict:
     """Second lineage learns on mixed conditions; final seeds remain untouched."""
-    if generations < 1 or population < 2:
+    if not (1 <= generations <= 40 and 2 <= population <= 64):
         raise ValueError("invalid generalist search size")
     rng = random.Random(seed)
     profiles = ("standard", "correlated_noise", "delayed_sensors")
@@ -237,6 +241,8 @@ def evolve_generalist(*, seed: int = 917, generations: int = 6, population: int 
         while len(candidates) < population and attempts < 1000:
             candidates.add(mutate(rng.choice(parents), rng))
             attempts += 1
+        if len(candidates) < population:
+            raise RuntimeError("bounded generalist mutation pool exhausted")
         scored = sorted(
             [(sum(evaluate(p, train, profile)["mean_score"] for profile in profiles) / len(profiles), p)
              for p in candidates],
