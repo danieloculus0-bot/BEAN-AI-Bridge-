@@ -250,6 +250,7 @@ def evolve_generalist(*, seed: int = 917, generations: int = 6, population: int 
                         "best_mixed_training_score": round(scored[0][0], 4),
                         "best_policy": asdict(scored[0][1])})
     winner = parents[0]
+    toggled = Policy(**{**asdict(winner), "learn_from_false_probes": not winner.learn_from_false_probes})
     return {
         "policy": asdict(winner),
         "history": history,
@@ -260,6 +261,14 @@ def evolve_generalist(*, seed: int = 917, generations: int = 6, population: int 
                 "generalist": evaluate(winner, holdout, profile),
                 "fixed_comparator": evaluate(RULE_COMPARATOR, holdout, profile),
             } for profile in profiles
+        },
+        "self_monitoring_ablation": {
+            "toggled_policy": asdict(toggled),
+            "by_profile": {
+                profile: {"selected": evaluate(winner, holdout, profile),
+                          "toggled": evaluate(toggled, holdout, profile)}
+                for profile in profiles
+            },
         },
     }
 
