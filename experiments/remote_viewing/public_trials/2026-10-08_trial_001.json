@@ -1,0 +1,14 @@
+{
+  "protocol": "bean-rv-v1",
+  "trial_number": 1,
+  "challenge_id": "bbfacc851c7b87f1e1c4c73f2552b245",
+  "commitment_sha256": "0c191f8a8f0259bcb83159d20adcf89bd3bc2d5d0d94e3be4b2e72d5ddc13207",
+  "candidate_count": 4,
+  "generated_utc": "2026-10-09T00:37:14+00:00",
+  "target_method": "os-csprng; four random candidates from a fixed disclosed-after-reveal generative recipe",
+  "private_material_excluded": true,
+  "observation_locked": false,
+  "reveal_status": "NOT_REVEALED",
+  "experiment_state": "WAITING_FOR_VIEWING",
+  "instructions": "Publish this exact file before blind observation; do not disclose target or candidate set until transcript has been sealed and chat closure attested."
+}
