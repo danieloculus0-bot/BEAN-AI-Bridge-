@@ -23,6 +23,7 @@ class Policy:
     confirmations: int = 3
     max_probes: int = 1
     ask_questions: bool = False
+    learn_from_false_probes: bool = False
 
 
 BASELINE = Policy()
@@ -69,7 +70,12 @@ class SimulatedAgent:
         selected = AttentionFilter(threshold=self.policy.attention_threshold).build_window(
             [event], open_questions=questions
         ).event_ids()
-        if not selected or self._streak < self.policy.confirmations:
+        # Bounded introspection: an earlier mistaken investigation is
+        # evidence that this controller needs more corroboration.
+        required = self.policy.confirmations + int(
+            self.policy.learn_from_false_probes and self.false_probes > 0
+        )
+        if not selected or self._streak < required:
             return
         if self.probes >= self.policy.max_probes:
             return
@@ -215,6 +221,49 @@ def evolve(*, seed: int = 1337, generations: int = 6, population: int = 20) -> d
     }
 
 
+def evolve_generalist(*, seed: int = 917, generations: int = 6, population: int = 24) -> dict:
+    """Second lineage learns on mixed conditions; final seeds remain untouched."""
+    if generations < 1 or population < 2:
+        raise ValueError("invalid generalist search size")
+    rng = random.Random(seed)
+    profiles = ("standard", "correlated_noise", "delayed_sensors")
+    train = list(range(800, 860))
+    holdout = list(range(12000, 12080))
+    parents = [BASELINE, RULE_COMPARATOR]
+    history = []
+    for generation in range(generations):
+        candidates = {BASELINE, RULE_COMPARATOR, *parents}
+        attempts = 0
+        while len(candidates) < population and attempts < 1000:
+            candidates.add(mutate(rng.choice(parents), rng))
+            attempts += 1
+        scored = sorted(
+            [(sum(evaluate(p, train, profile)["mean_score"] for profile in profiles) / len(profiles), p)
+             for p in candidates],
+            key=lambda pair: (pair[0], -pair[1].confirmations, -pair[1].max_probes,
+                              -pair[1].attention_threshold, pair[1].ask_questions,
+                              pair[1].learn_from_false_probes),
+            reverse=True,
+        )
+        parents = [policy for _, policy in scored[:min(5, len(scored))]]
+        history.append({"generation": generation,
+                        "best_mixed_training_score": round(scored[0][0], 4),
+                        "best_policy": asdict(scored[0][1])})
+    winner = parents[0]
+    return {
+        "policy": asdict(winner),
+        "history": history,
+        "train_seed_window": [min(train), max(train)],
+        "holdout_seed_window": [min(holdout), max(holdout)],
+        "by_profile": {
+            profile: {
+                "generalist": evaluate(winner, holdout, profile),
+                "fixed_comparator": evaluate(RULE_COMPARATOR, holdout, profile),
+            } for profile in profiles
+        },
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path)
@@ -222,6 +271,9 @@ def main() -> None:
     parser.add_argument("--population", type=int, default=20)
     args = parser.parse_args()
     report = evolve(generations=args.generations, population=args.population)
+    report["mixed_environment_generalist"] = evolve_generalist(
+        generations=args.generations, population=max(24, args.population)
+    )
     body = json.dumps(report, indent=2, sort_keys=True)
     print(body)
     if args.out:
