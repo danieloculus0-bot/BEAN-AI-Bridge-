@@ -1,0 +1,39 @@
+name: BEAN Earth geometry falsification experiment
+on:
+  push:
+    paths:
+      - 'experiments/flat_earth/**'
+      - '.github/workflows/bean-earth-falsification.yml'
+  workflow_dispatch:
+jobs:
+  native-bean-earth-evidence:
+    name: BEAN empirical model contrast (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout BEAN AI Bridge
+        uses: actions/checkout@v4
+      - name: Checkout actual BEAN core
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          path: bean_core
+      - name: Python runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Preflight compilation
+        run: python -m py_compile experiments/flat_earth/bean_flat_earth.py
+      - name: BEAN event memory, falsification, contradiction audit, reflection
+        run: python experiments/flat_earth/bean_flat_earth.py --out artifacts/flat_earth
+      - name: Upload independently reviewable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-earth-geometry-${{ matrix.os }}
+          path: |
+            artifacts/flat_earth/results.json
+            artifacts/flat_earth/bean_flat_earth_evidence.sqlite
+          retention-days: 30
