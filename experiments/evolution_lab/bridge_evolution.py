@@ -86,8 +86,10 @@ class SimulatedAgent:
         self._streak = 0
 
 
-def generate_case(seed: int) -> dict:
+def generate_case(seed: int, profile: str = "standard") -> dict:
     """The evaluator owns ground truth. Only sensor pairs reach the agent."""
+    if profile not in {"standard", "correlated_noise", "delayed_sensors"}:
+        raise ValueError("unknown synthetic sensor profile")
     rng = random.Random(seed)
     changed = rng.random() < 0.72
     change_at = rng.choice([3, 4, 5, 7]) if changed else None
@@ -96,16 +98,22 @@ def generate_case(seed: int) -> dict:
         truth = int(changed and step >= change_at)
         a = truth ^ int(rng.random() < 0.20)
         b = truth ^ int(rng.random() < 0.28)
+        if profile == "correlated_noise" and rng.random() < 0.30:
+            # Both channels suffer the same unobserved common-mode fault.
+            a = b = 1 - truth
+        if profile == "delayed_sensors" and changed and change_at <= step < change_at + 4:
+            # Physical state changed, but both reports are stale.
+            a = b = 0
         timeline.append((a, b, truth))
     return {"changed": changed, "change_at": change_at, "timeline": timeline}
 
 
-def evaluate(policy: Policy, seeds: list[int]) -> dict:
+def evaluate(policy: Policy, seeds: list[int], profile: str = "standard") -> dict:
     points = 0.0
     hits = false_probes = probes = delays = changed_count = 0
     persisted = 0
     for seed in seeds:
-        case = generate_case(seed)
+        case = generate_case(seed, profile=profile)
         agent = SimulatedAgent(policy)
         for step, (a, b, truth) in enumerate(case["timeline"]):
             # The agent cannot read 'truth'; it can request one bounded verification.
@@ -188,11 +196,21 @@ def evolve(*, seed: int = 1337, generations: int = 6, population: int = 20) -> d
         "rule_comparator": {"policy": asdict(RULE_COMPARATOR), "holdout": evaluate(RULE_COMPARATOR, holdout)},
         "evolved": {"policy": asdict(winner), "training": evaluate(winner, train),
                     "holdout": evaluate(winner, holdout)},
+        "out_of_distribution": {
+            profile: {
+                "baseline": evaluate(BASELINE, holdout, profile),
+                "rule_comparator": evaluate(RULE_COMPARATOR, holdout, profile),
+                "evolved": evaluate(winner, holdout, profile),
+            }
+            for profile in ("correlated_noise", "delayed_sensors")
+        },
         "limitations": [
             "The agent is a finite-state controller using BEAN attention, not an LLM.",
             "Training and evaluation are synthetic with simulator-provided verification.",
             "General intelligence, subjective experience and unscripted curiosity are not established.",
             "Candidate mutations are bounded parameters, not arbitrary executable code.",
+            "The first evolved policy tied the hand-tuned comparator under standard conditions.",
+            "Correlated sensor errors and stale sensors challenge the model without retraining.",
         ],
     }
 
