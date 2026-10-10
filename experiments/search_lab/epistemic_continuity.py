@@ -129,7 +129,8 @@ class EpistemicContinuity:
         return round(relevance * (0.05 + 0.95 * uncertainty) * (0.6 + 0.4 * variation), 9)
 
     def add_claim_evidence(self, claim: str, evidence_id: str, *, supports: bool,
-                           independently_verified: bool, weight: float = 1.0) -> float:
+                           independently_verified: bool, weight: float = 1.0,
+                           independent_sample_id: str | None = None) -> float:
         if evidence_id not in self.nodes:
             raise ValueError("cannot claim unseen evidence")
         if isinstance(weight, bool) or not isinstance(weight, (float, int)) or not math.isfinite(weight) or not 0 <= weight <= 1:
@@ -137,8 +138,13 @@ class EpistemicContinuity:
         model = self.belief(claim)
         model.observed_count += 1
         origin = self.nodes[evidence_id].origin
-        if independently_verified and origin not in model.verified_origins:
-            model.verified_origins.add(origin)
+        # Copies share an origin and count once. A genuinely new verified
+        # measurement can be identified by its explicit sampling ID.
+        if independent_sample_id is not None and not independent_sample_id.strip():
+            raise ValueError("empty independent sample")
+        sample_key = origin if independent_sample_id is None else f"{origin}:sample:{independent_sample_id}"
+        if independently_verified and sample_key not in model.verified_origins:
+            model.verified_origins.add(sample_key)
             model.verified_count += 1
             if supports:
                 model.positive += weight
