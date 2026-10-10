@@ -1,0 +1,40 @@
+name: BEAN simulated robot body lab 001
+on:
+  push:
+    branches:
+      - experiment/bean-robot-body-lab001-20261010
+    paths:
+      - 'experiments/robot_body/**'
+      - '.github/workflows/bean-robot-body-lab001.yml'
+  workflow_dispatch:
+jobs:
+  physics-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out true BEAN Core body and optimization governance
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: main
+          path: bean-core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install real MuJoCo dynamics
+        run: python -m pip install 'mujoco>=3.2,<4'
+      - name: Structural tests and hardware constraints
+        run: python -m unittest discover -s experiments/robot_body -p 'test_*.py' -v
+      - name: Run seeded morphology and locomotion experiments
+        run: python experiments/robot_body/lab.py --trials 24 --seed 106 --core-dir bean-core --out robot-results
+      - name: Save raw evidence and BEAN governor proposal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-robot-lab001-results
+          path: robot-results/
+          if-no-files-found: warn
