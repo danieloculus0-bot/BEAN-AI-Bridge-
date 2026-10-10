@@ -109,7 +109,7 @@ class TestOutputGate(unittest.TestCase):
     def test_evidence_is_mandatory_to_claim_verified(self):
         with self.assertRaisesRegex(ValueError,"evidence"):
             self.put("foo","unsupported",refs=[])
-        with self.assertRaisesRegex(ValueError,"later"):
+        with self.assertRaisesRegex(ValueError,"after effective time"):
             self.put("foo","bad",expires_at="2026-10-09T23:00:00Z")
 
     def test_unsafe_or_duplicated_time_is_rejected(self):
