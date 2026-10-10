@@ -214,8 +214,10 @@ def run(output: Path, *, base_dir: Path | None = None) -> dict:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, default=Path("lab009-evidence.json"))
+    parser.add_argument("--evidence-dir", type=Path,
+                        help="Retain the real SQLite libraries and BEAN Core audit DB for download")
     args = parser.parse_args()
-    result = run(args.out)
+    result = run(args.out, base_dir=args.evidence_dir)
     metrics = result["heldout_metrics"]
     if (metrics["system_correct_after"] <= metrics["baseline_correct"]
             or not result["ledger"]["native_bean_events"]
