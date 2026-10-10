@@ -41,9 +41,10 @@ def seed(lib):
 
 
 def run(model="qwen2.5:0.5b",repeat=3,output=Path("lab008-results.json"),
-        transport=None, minimum_accepts=1):
+        transport=None, minimum_accepts=1, minimum_answers=0):
     if not 1<=repeat<=20: raise ValueError("repeat outside 1..20")
     if not 0<=minimum_accepts<=repeat*10: raise ValueError("invalid minimum")
+    if not 0<=minimum_answers<=repeat*6: raise ValueError("invalid answered minimum")
     output=Path(output)
     output.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="bean_definitions_lab008_") as t:
@@ -76,6 +77,8 @@ def run(model="qwen2.5:0.5b",repeat=3,output=Path("lab008-results.json"),
     counts=Counter(r["reason"] for r in observations)
     accepted=sum(r["accepted"] for r in observations)
     failures=len(observations)-accepted
+    answered=sum(r.get("reason")=="accepted" for r in observations)
+    abstentions=sum(r.get("reason")=="accepted_abstention" for r in observations)
     report=dict(
         label="BEAN_LAB008_DYNAMIC_DEFINITIONS_REPEATED_OUTPUT_CONTRACT",
         classification="SYNTHETIC_ASSERTED_SOURCE_LIBRARY_NOT_FACT_VERIFIED",
@@ -83,11 +86,12 @@ def run(model="qwen2.5:0.5b",repeat=3,output=Path("lab008-results.json"),
         model=model if transport is None else "injected",
         checked_at_utc=datetime.now(timezone.utc).isoformat(),
         repeats=repeat,total=len(observations),accepted=accepted,failed=failures,
+        accepted_verified_lookups=answered,accepted_abstentions=abstentions,
         acceptance_rate=round(accepted/max(1,len(observations)),4),
         reason_distribution=dict(counts),
-        predeclared_fail_condition="accepted count below --min-accepted or zero output attempts",
-        minimum_accepts=minimum_accepts,
-        met_minimum=accepted>=minimum_accepts and len(observations)>0,
+        predeclared_fail_condition="accepted count below --min-accepted, canonical lookups below --min-answered, or zero output attempts",
+        minimum_accepts=minimum_accepts,minimum_answers=minimum_answers,
+        met_minimum=accepted>=minimum_accepts and answered>=minimum_answers and len(observations)>0,
         raw_observations=observations,
         definition_history=library_history,
         limitations=[
@@ -99,7 +103,8 @@ def run(model="qwen2.5:0.5b",repeat=3,output=Path("lab008-results.json"),
     )
     output.write_text(json.dumps(report,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
     print(json.dumps({k:report[k] for k in ("engine","model","repeats","total","accepted","failed",
-                                            "acceptance_rate","reason_distribution","met_minimum")},indent=2))
+                                            "acceptance_rate","accepted_verified_lookups","accepted_abstentions",
+                                            "reason_distribution","met_minimum")},indent=2))
     return report
 
 def main():
@@ -108,8 +113,10 @@ def main():
     p.add_argument("--repeat",type=int,default=3)
     p.add_argument("--out",type=Path,default=Path("lab008-results.json"))
     p.add_argument("--min-accepted",type=int,default=1)
+    p.add_argument("--min-answered",type=int,default=0)
     args=p.parse_args()
-    outcome=run(args.model,args.repeat,args.out,minimum_accepts=args.min_accepted)
+    outcome=run(args.model,args.repeat,args.out,
+                minimum_accepts=args.min_accepted,minimum_answers=args.min_answered)
     if not outcome["met_minimum"]:
         raise SystemExit(2)
 

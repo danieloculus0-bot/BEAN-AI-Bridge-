@@ -66,7 +66,7 @@ jobs:
           ollama pull qwen2.5:1.5b
           ollama list
       - name: Repeat 10 definition checks three times
-        run: python -m experiments.knowledge_lab.run_lab008 --repeat 3 --model qwen2.5:1.5b --min-accepted 1 --out lab008-live-output-gate.json
+        run: python -m experiments.knowledge_lab.run_lab008 --repeat 3 --model qwen2.5:1.5b --min-accepted 27 --min-answered 16 --out lab008-live-output-gate.json
       - name: Preserve local Ollama diagnostics
         if: always()
         run: cp /tmp/ollama-lab008-server.log lab008-ollama-server.log 2>/dev/null || true
