@@ -6,6 +6,18 @@ EZ-BEAN is the planned EZ Fabricating ERP-linked KPI development and operational
 
 This repository is a **public-safe, generic implementation and smoke-test path** for that architecture. It has no live connection to EZ Fab ERP systems and contains **synthetic data only**. It is **not** the ERP production connector, nor a deployed real-time dashboard.
 
+## Top-level evidence learning coordinator (experimental LAB009)
+
+The branch adds **`from ezbean import EvidenceLearningLoop`** as the highest-level
+research interface for the complete evidence-revision cycle: failed output →
+uncertainty → source investigation → independent verifier → immutable definition
+revision → BEAN Core SQLite cognition → later replay and evidence compilation.
+
+**[See the module, reproducible experiment, verification rules, and downloadable outputs](experiments/learning_loop/README.md).** The coordinator supports repeated
+calls and restarts; it is not a daemon, model-weight training system, or
+authenticated web fact-checker. Its example runs use synthetic source evidence
+and real native BEAN Core journaling.
+
 ## Architecture
 
 ```
