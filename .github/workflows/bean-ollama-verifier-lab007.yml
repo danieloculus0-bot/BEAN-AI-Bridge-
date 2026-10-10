@@ -1,0 +1,131 @@
+name: BEAN Lab 007 local Ollama evidence verification experiment
+
+on:
+  push:
+    branches:
+      - experiment/bean-ollama-verifier-lab007-20261010
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-linux:
+    name: BEAN venv unit tests (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: bridge
+      - uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: 3cf85e63005d97ceaa7484b2d4d61efb0da3ee10
+          path: bean-core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Create BEAN virtual environment
+        run: python -m venv bridge/.venv
+      - name: Install test dependencies inside BEAN venv
+        run: bridge/.venv/bin/python -m pip install pytest psutil
+      - name: Regression suite with local BEAN Core
+        working-directory: bridge
+        run: |
+          export PYTHONPATH="$GITHUB_WORKSPACE/bridge/src:$GITHUB_WORKSPACE/bean-core:$GITHUB_WORKSPACE/bridge"
+          .venv/bin/python -m pytest tests -q --tb=short --junitxml=lab007-linux.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bean-venv-lab007-linux
+          path: bridge/lab007-linux.xml
+          if-no-files-found: ignore
+
+  unit-windows:
+    name: BEAN venv unit tests (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: bridge
+      - uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: 3cf85e63005d97ceaa7484b2d4d61efb0da3ee10
+          path: bean-core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Create BEAN virtual environment
+        shell: pwsh
+        run: python -m venv bridge/.venv
+      - name: Install test dependencies inside BEAN venv
+        shell: pwsh
+        run: & bridge/.venv/Scripts/python.exe -m pip install pytest psutil
+      - name: Regression suite with local BEAN Core
+        working-directory: bridge
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "$env:GITHUB_WORKSPACE\bridge\src;$env:GITHUB_WORKSPACE\bean-core;$env:GITHUB_WORKSPACE\bridge"
+          & .venv/Scripts/python.exe -m pytest tests -q --tb=short --junitxml=lab007-windows.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bean-venv-lab007-windows
+          path: bridge/lab007-windows.xml
+          if-no-files-found: ignore
+
+  ollama-live:
+    name: Real Ollama model inside BEAN venv (Linux CPU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: bridge
+      - uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: 3cf85e63005d97ceaa7484b2d4d61efb0da3ee10
+          path: bean-core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Create independent BEAN venv
+        run: python -m venv bridge/.venv
+      - name: Install Ollama runtime
+        run: |
+          curl -fsSL https://ollama.com/install.sh -o /tmp/install-ollama.sh
+          sh /tmp/install-ollama.sh
+          ollama --version
+      - name: Start local Ollama server and download real model
+        run: |
+          nohup ollama serve > /tmp/bean-ollama-server.log 2>&1 &
+          for attempt in $(seq 1 50); do
+            if curl -fsS http://127.0.0.1:11434/api/tags > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags > /dev/null
+          ollama pull qwen2.5:1.5b
+          curl -fsS http://127.0.0.1:11434/api/tags
+      - name: Query REAL local model against all 20 research claims
+        working-directory: bridge
+        run: |
+          export PYTHONPATH="$GITHUB_WORKSPACE/bridge/src:$GITHUB_WORKSPACE/bean-core:$GITHUB_WORKSPACE/bridge"
+          .venv/bin/python -m experiments.mcdonalds_lab.ollama_verifier --model qwen2.5:1.5b --limit 20 --timeout 140 --out lab007-live-ollama.json
+      - name: Archive model output and service details
+        if: always()
+        run: cp /tmp/bean-ollama-server.log bridge/lab007-ollama-server.log 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bean-ollama-live-lab007
+          path: |
+            bridge/lab007-live-ollama.json
+            bridge/lab007-ollama-server.log
+          if-no-files-found: ignore
