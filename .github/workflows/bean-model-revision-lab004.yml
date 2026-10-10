@@ -34,18 +34,32 @@ jobs:
           python-version: '3.10'
       - name: Install offline tests
         run: python -m pip install pytest psutil
-      - name: Run full Bridge regression
-        shell: bash
+      - name: Run full Bridge regression on Linux
+        if: runner.os != 'Windows'
         working-directory: bridge
-        run: |
-          export PYTHONPATH="$PWD/src:$GITHUB_WORKSPACE/bean-core:$PWD"
-          python -m pytest tests -q -ra --tb=short --junitxml=bean-lab004-tests.xml
-      - name: Run knowledge revision and regime-shift experiment
-        shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/bridge/src:${{ github.workspace }}/bean-core:${{ github.workspace }}/bridge
+        run: python -m pytest tests -q -ra --tb=short --junitxml=bean-lab004-tests.xml
+      - name: Run full Bridge regression on Windows
+        if: runner.os == 'Windows'
         working-directory: bridge
-        run: |
-          export PYTHONPATH="$PWD/src:$GITHUB_WORKSPACE/bean-core:$PWD"
-          python -m experiments.evolution_lab.model_revision_lab004 --out bean-lab004-report.json
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}\bridge\src;${{ github.workspace }}\bean-core;${{ github.workspace }}\bridge
+        run: python -m pytest tests -q -ra --tb=short --junitxml=bean-lab004-tests.xml
+      - name: Evaluate model revision on Linux
+        if: runner.os != 'Windows'
+        working-directory: bridge
+        env:
+          PYTHONPATH: ${{ github.workspace }}/bridge/src:${{ github.workspace }}/bean-core:${{ github.workspace }}/bridge
+        run: python -m experiments.evolution_lab.model_revision_lab004 --out bean-lab004-report.json
+      - name: Evaluate model revision on Windows
+        if: runner.os == 'Windows'
+        working-directory: bridge
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}\bridge\src;${{ github.workspace }}\bean-core;${{ github.workspace }}\bridge
+        run: python -m experiments.evolution_lab.model_revision_lab004 --out bean-lab004-report.json
       - name: Archive exact results
         if: always()
         uses: actions/upload-artifact@v4
