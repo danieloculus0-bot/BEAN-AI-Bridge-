@@ -65,7 +65,8 @@ jobs:
         run: python -m venv bridge/.venv
       - name: Install test dependencies inside BEAN venv
         shell: pwsh
-        run: & bridge/.venv/Scripts/python.exe -m pip install pytest psutil
+        run: |
+          & bridge/.venv/Scripts/python.exe -m pip install pytest psutil
       - name: Regression suite with local BEAN Core
         working-directory: bridge
         shell: pwsh
