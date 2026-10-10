@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
@@ -170,6 +171,8 @@ class LearningLoopCases(unittest.TestCase):
             # close operation is idempotent.
 
 
+@unittest.skipUnless(importlib.util.find_spec('bean') is not None,
+                     'Full native-core replay requires an installed BEAN Core checkout')
 class LiveCoreTest(unittest.TestCase):
     def test_full_real_core_and_holdout_replay(self):
         with tempfile.TemporaryDirectory(prefix="bean_learning_test_") as tmp:
