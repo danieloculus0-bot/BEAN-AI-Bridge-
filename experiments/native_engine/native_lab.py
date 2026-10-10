@@ -85,13 +85,19 @@ class Provider:
 
     def map_runtime(self):
         """Read local API advertised facts. Do not pretend to reverse-engineer internals."""
-        transport = self.backend.request_fn
-        if transport is self.backend._request:
-            pass
-        # Model status endpoints are GET (not /api/chat). The backend's default
-        # HTTP helper accepts a None payload, as do test transports.
-        version = transport("/api/version",None)
-        tags = transport("/api/tags",None)
+        # Ollama capability introspection endpoints are GET; our backend's
+        # /api/chat request helper sends POST. Preserve the proper HTTP method.
+        if self.backend.request_fn == self.backend._request:
+            from urllib.request import urlopen
+            def get_json(path):
+                with urlopen(self.backend.endpoint+path,timeout=self.backend.timeout) as r:
+                    if r.status!=200: raise RuntimeError(f"HTTP {r.status}")
+                    return json.loads(r.read(250000).decode("utf-8"))
+        else:
+            def get_json(path):
+                return self.backend.request_fn(path,None)
+        version = get_json("/api/version")
+        tags = get_json("/api/tags")
         models = [
             {"name":item.get("name"),"digest":item.get("digest"),"size":item.get("size")}
             for item in tags.get("models", [])
@@ -227,7 +233,7 @@ class Evolution:
     def search(self,gateway,training):
         # Baselines are not inferred winners. The optimizer must measure them.
         population=[REFERENCE,Blueprint(False,True,False,False),
-                    Blueprint(False,False,True,True)]
+                    Blueprint(False,False,True,True), BEAN_NATIVE]
         measurements={}
         proposed=[]
         for iteration in range(self.iterations):
