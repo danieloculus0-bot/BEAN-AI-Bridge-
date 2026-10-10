@@ -126,3 +126,56 @@ def test_unjustified_or_backward_cross_abstraction_links_rejected():
         g.connect("spec-evaluation", "voltage-reading", .8, "backwards")
     with pytest.raises(ValueError):
         g.connect("voltage-reading", "spec-evaluation", 1.5, "overweighted")
+
+
+def test_repeated_measurements_same_device_can_reopen_belief_without_echo_votes():
+    g = connected_graph()
+    b = g.belief("motor-in-spec")
+    b.positive = 1000000
+    b.settle()
+    for i in range(2):
+        n = f"calibration-shift-{i}"
+        g.observe(id=n, layer="measurement", origin="same-meter",
+                  value=-0.002, uncertainty=0.01)
+        g.add_claim_evidence("motor-in-spec", n, supports=False,
+                             independently_verified=True,
+                             independent_sample_id=f"independent-check-{i}")
+    assert b.reopen_count == 1
+    assert b.verified_count == 2
+    assert b.observed_count == 2
+    # A syndicated copy of the first measured sample is still only a copy.
+    g.observe(id="copy", layer="measurement", origin="same-meter",
+              value=-0.002, uncertainty=0.01)
+    g.add_claim_evidence("motor-in-spec", "copy", supports=False,
+                         independently_verified=True,
+                         independent_sample_id="independent-check-0")
+    assert b.verified_count == 2
+    assert b.observed_count == 3
+
+
+def test_search_preserves_microphysics_but_requires_specific_relevance_link():
+    agent = ConfidenceSearchAgent()
+    unrelated = Page("noise", "independent", "vendor", 1, .7, .7, .7,
+                     physical_deviation=0.0000001, physical_uncertainty=.02)
+    agent.inspect(unrelated)
+    initial = agent.rerank()[0]
+    assert initial["physical_relevance"] == 0
+    node = f"{agent.claim_id}:page:noise:physical"
+    assert node in agent.continuity.nodes
+    relevant = Page("tolerance", "primary", "calibrated-lab", 1, .75, .94, .92,
+                    physical_deviation=0.0000001, physical_uncertainty=.02,
+                    physical_link_strength=.6,
+                    physical_link_basis="independently established measurement-to-spec linkage")
+    agent.inspect(relevant)
+    ranking = {x["page_id"]: x for x in agent.rerank()}
+    assert ranking["tolerance"]["physical_relevance"] == pytest.approx(.6 * .75)
+    assert ranking["noise"]["physical_relevance"] == 0
+    assert agent.continuity.nodes[f"{agent.claim_id}:page:tolerance:measurement"].layer == "measurement"
+
+
+def test_ungrounded_physical_link_is_rejected_before_ranking():
+    agent = ConfidenceSearchAgent()
+    with pytest.raises(ValueError, match="grounded rationale"):
+        agent.inspect(Page("groundless", "primary", "test", 1, .8, .8, .8,
+                           physical_deviation=.00001,
+                           physical_link_strength=.9))
