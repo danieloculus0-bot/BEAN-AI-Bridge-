@@ -22,8 +22,6 @@ jobs:
     name: BEAN Native synthetic bridge and HTTP smoke
     runs-on: ${{ matrix.os }}
     timeout-minutes: 12
-    env:
-      PYTHONPATH: 'src:.'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,10 +29,24 @@ jobs:
           python-version: '3.11'
       - name: Compile all code
         run: python -m compileall -q src tests experiments/native_engine
-      - name: Bridge and native regression
-        run: python -m unittest discover -s tests -v
-      - name: Replay complete topology search with fixture
-        run: python -m unittest discover -s tests -p test_native_lab009.py -v
+      - name: Bridge and native regression on Linux
+        if: runner.os != 'Windows'
+        run: PYTHONPATH=src:. python -m unittest discover -s tests -v
+      - name: Bridge and native regression on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src;."
+          python -m unittest discover -s tests -v
+      - name: Repeat architecture search on Linux
+        if: runner.os != 'Windows'
+        run: PYTHONPATH=src:. python -m unittest discover -s tests -p test_native_lab009.py -v
+      - name: Repeat architecture search on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src;."
+          python -m unittest discover -s tests -p test_native_lab009.py -v
 
   autonomous-lab:
     name: Actual BEAN Core governor and real Ollama reference model
