@@ -144,6 +144,23 @@ class TestOutputGate(unittest.TestCase):
         extra=FakeOllama(lambda x: {**x,"confidence":1})
         self.assertEqual(self.gate.query(extra,"affection",T1)["reason"],"invalid_shape")
 
+    def test_repeated_protocol_harness_and_full_audit(self):
+        from experiments.knowledge_lab.run_lab008 import run
+        class Transport:
+            def complete(self, payload):
+                d=payload["verified_definition"]
+                return {"message":{"content":json.dumps({
+                    "concept":payload["requested_concept"],
+                    "decision":"answer" if d else "abstain",
+                    "value":d["value"] if d else None,
+                    "definition_ids":[d["definition_id"]] if d else []
+                })}}
+        report=run(repeat=2,output=Path(self.temp.name)/"protocol.json",
+                   transport=Transport(),minimum_accepts=20)
+        self.assertEqual((report["total"],report["accepted"],report["failed"]),(20,20,0))
+        self.assertEqual(len(report["definition_history"]["calibration_code"]),2)
+        self.assertTrue(all("audit_candidate_untrusted" in row for row in report["raw_observations"]))
+
     def test_local_only_ollama(self):
         for url in ("https://localhost:11434","http://example.com:11434",
                     "http://user:pw@localhost:11434","http://localhost:11434/api/chat"):

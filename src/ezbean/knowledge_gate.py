@@ -150,12 +150,17 @@ class OllamaProvider:
 
     def _request(self, path, payload):
         from urllib.request import Request, urlopen
+        from urllib.error import HTTPError
         req = Request(self.endpoint + path, json.dumps(payload).encode(),
                       headers={"Content-Type": "application/json"}, method="POST")
-        with urlopen(req, timeout=self.timeout) as response:
-            if response.status != 200:
-                raise RuntimeError(f"Ollama returned HTTP {response.status}")
-            return json.loads(response.read(1_000_000).decode())
+        try:
+            with urlopen(req, timeout=self.timeout) as response:
+                if response.status != 200:
+                    raise RuntimeError(f"Ollama returned HTTP {response.status}")
+                return json.loads(response.read(1_000_000).decode())
+        except HTTPError as exc:
+            diagnostic=exc.read(2048).decode("utf-8", errors="replace")
+            raise RuntimeError(f"Ollama HTTP {exc.code}: {diagnostic[:1200]}") from exc
 
     def complete(self, payload: dict) -> dict:
         return self.request_fn("/api/chat", {
@@ -239,4 +244,8 @@ class OutputGate:
             candidate = None
         result = self.verify(concept, at, candidate)
         result["model_response_valid_json"] = candidate is not None
+        # Evidence lab only: untrusted candidate retained for examination, never displayed
+        # as a verified answer. Production integrations must apply retention limits.
+        result["audit_candidate_untrusted"] = candidate
+        result["audit_raw_model_content"] = raw[:3000] if isinstance(raw, str) else None
         return result
