@@ -198,6 +198,12 @@ class ExportSponge:
             PRIMARY KEY(digest,row_number)
         );
         CREATE INDEX IF NOT EXISTS snap_lookup ON export_snapshots(kind,captured_at);
+        CREATE TABLE IF NOT EXISTS import_issues(
+            digest TEXT NOT NULL,
+            row_number INTEGER NOT NULL,
+            issue TEXT NOT NULL,
+            PRIMARY KEY(digest,row_number)
+        );
         """)
         self.db.commit()
 
@@ -206,11 +212,14 @@ class ExportSponge:
         digest=hashlib.sha256(path.read_bytes()).hexdigest()
         previous=self.db.execute("SELECT kind,row_count FROM export_snapshots WHERE digest=?",(digest,)).fetchone()
         if previous:
-            return {"status":"duplicate","kind":previous["kind"],"rows":previous["row_count"],"digest":digest}
+            warnings=self.db.execute("SELECT COUNT(*) FROM import_issues WHERE digest=?",(digest,)).fetchone()[0]
+            return {"status":"duplicate","kind":previous["kind"],"rows":previous["row_count"],
+                    "quarantined_rows":warnings,"digest":digest}
         stamp=_timestamp(captured_at) if captured_at else _file_timestamp(path)
         kind,rows=_source(path)
-        # Catch invalid dates/counts on input so one malformed export cannot
-        # quietly distort KPI output.
+        # Quarantine malformed RMA tracker dates instead of losing the whole
+        # historical export; other report schema errors fail the batch.
+        issues=[]
         for idx,row in rows:
             if kind=="job_schedule":
                 _calendar_date(row["DueDate"],"DueDate")
@@ -222,15 +231,20 @@ class ExportSponge:
                     raise ValueError(f"Shipment dates missing at row {idx}")
                 _count(row.get("QtyShipped"),"QtyShipped")
             elif kind=="rma_tracker":
-                if not _calendar_date(row.get("Date"),"Date"):
-                    raise ValueError(f"RMA date missing at row {idx}")
+                try:
+                    if not _calendar_date(row.get("Date"),"Date"):
+                        raise ValueError("RMA date missing")
+                except ValueError as exc:
+                    issues.append((digest,idx,str(exc)[:180]))
         now=_timestamp(datetime.now(UTC))
         with self.db:
             self.db.execute("INSERT INTO export_snapshots VALUES(?,?,?,?,?,?)",
                             (digest,kind,stamp,path.name,len(rows),now))
             self.db.executemany("INSERT INTO export_rows VALUES(?,?,?)",
                     [(digest,idx,json.dumps(row,sort_keys=True,ensure_ascii=False)) for idx,row in rows])
-        return {"status":"imported","kind":kind,"rows":len(rows),"digest":digest}
+            self.db.executemany("INSERT INTO import_issues VALUES(?,?,?)",issues)
+        return {"status":"imported","kind":kind,"rows":len(rows),
+                "quarantined_rows":len(issues),"digest":digest}
 
     def snapshots(self,kind,as_of):
         rows=self.db.execute("""
@@ -243,8 +257,11 @@ class ExportSponge:
         if snapshot is None:return []
         return [(f"{snapshot['digest'][:12]}:{row['row_number']}",
                  json.loads(row["payload_json"])) for row in self.db.execute(
-                 "SELECT row_number,payload_json FROM export_rows WHERE digest=? ORDER BY row_number",
-                 (snapshot["digest"],))]
+                 """SELECT row_number,payload_json FROM export_rows
+                    WHERE digest=? AND NOT EXISTS (
+                       SELECT 1 FROM import_issues i
+                       WHERE i.digest=export_rows.digest AND i.row_number=export_rows.row_number)
+                    ORDER BY row_number""",(snapshot["digest"],))]
 
     def report(self,window_start,as_of):
         start=date.fromisoformat(window_start)
@@ -289,6 +306,10 @@ class ExportSponge:
             rma_date=_calendar_date(row.get("Date"),"Date")
             if start<=rma_date<=end:rmas.append((ref,row))
         reason_counts=dict(Counter(row["Reason Code"] for _,row in rmas if row.get("Reason Code")))
+        quarantined=[{"row_ref":f"{active_rma['digest'][:12]}:{q['row_number']}",
+                      "issue":q["issue"]} for q in self.db.execute(
+            "SELECT row_number,issue FROM import_issues WHERE digest=? ORDER BY row_number",
+            (active_rma["digest"],))] if active_rma else []
         otd=(round(100*len(shipped_on_time)/len(shipment_rows),2) if shipment_rows else None)
         return {
           "schema":"BEAN_JOBBOSS_EXPORT_V1",
@@ -307,6 +328,7 @@ class ExportSponge:
               "rma_quantity":None,
               "rma_cost_usd":None},
           "rma_reason_counts":reason_counts if rma else None,
+          "quarantined_rma_rows":quarantined,
           "evidence":{
               "shipment_row_refs":[ref for ref,_ in shipment_rows],
               "past_due_row_refs":due,
@@ -316,6 +338,7 @@ class ExportSponge:
               "Shipment exports are merged by packing list, job, date, order and description; source coverage must be verified.",
               "Job Schedule is a captured snapshot; only the latest available schedule is used.",
               "RMA Tracker records incidents but does not include reliable quantity or dollar columns.",
+              "Malformed RMA dates are quarantined and excluded, with row-level audit evidence.",
               "A missing export is unknown (null), not a zero count.",
               "All source spreadsheets and the SQLite ledger remain local; no ERP write-back."
           ]}
