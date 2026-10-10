@@ -1,0 +1,71 @@
+name: BEAN Lab 006 permanent learning and cross-abstraction confidence
+
+on:
+  push:
+    branches:
+      - experiment/bean-epistemic-continuity-lab006-20261010
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  confidence-search:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - name: Checkout experimental Bridge
+        uses: actions/checkout@v4
+        with:
+          path: bridge
+      - name: Checkout pinned BEAN Core
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: 3cf85e63005d97ceaa7484b2d4d61efb0da3ee10
+          path: bean-core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install test tools
+        run: python -m pip install pytest psutil
+      - name: Full regressions Linux
+        if: runner.os != 'Windows'
+        working-directory: bridge
+        env:
+          PYTHONPATH: ${{ github.workspace }}/bridge/src:${{ github.workspace }}/bean-core:${{ github.workspace }}/bridge
+        run: python -m pytest tests -q -ra --tb=short --junitxml=lab005-tests.xml
+      - name: Full regressions Windows
+        if: runner.os == 'Windows'
+        working-directory: bridge
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}\bridge\src;${{ github.workspace }}\bean-core;${{ github.workspace }}\bridge
+        run: python -m pytest tests -q -ra --tb=short --junitxml=lab005-tests.xml
+      - name: Run search ranking benchmark Linux
+        if: runner.os != 'Windows'
+        working-directory: bridge
+        env:
+          PYTHONPATH: ${{ github.workspace }}/bridge/src:${{ github.workspace }}/bean-core:${{ github.workspace }}/bridge
+        run: python -m experiments.search_lab.confidence_search --out lab005-search-ranking.json
+      - name: Run search ranking benchmark Windows
+        if: runner.os == 'Windows'
+        working-directory: bridge
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}\bridge\src;${{ github.workspace }}\bean-core;${{ github.workspace }}\bridge
+        run: python -m experiments.search_lab.confidence_search --out lab005-search-ranking.json
+      - name: Archive ranking report and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-epistemic-continuity-${{ matrix.os }}
+          path: |
+            bridge/lab005-tests.xml
+            bridge/lab005-search-ranking.json
+          if-no-files-found: ignore
