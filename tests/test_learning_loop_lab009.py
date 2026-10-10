@@ -71,6 +71,11 @@ class LearningLoopCases(unittest.TestCase):
         self.assertEqual(r.confirmed_sources, 3)
         self.assertEqual(len(self.lib.history("sensor_tolerance")), 1)
         self.assertEqual(loop.history()[0]["cycle_id"], r.cycle_id)
+        compiled = loop.compile_evidence()
+        self.assertEqual(compiled["cycles"], 1)
+        self.assertEqual(compiled["system_answerable_cycles"], 1)
+        self.assertEqual(compiled["model_accepted_cycles"], 0)
+        self.assertEqual(compiled["verified_source_records"], 3)
 
     def test_new_evidence_can_correct_stale_verified_definition(self):
         self.lib.define("calibration_code", "HX-00621", status="verified",
@@ -187,6 +192,11 @@ class LiveCoreTest(unittest.TestCase):
             self.assertEqual(report["pre_restart_learning"][2]["result_status"], "unresolved")
             self.assertEqual(len(report["ledger"]["definition_revisions"]["unresolved_safety"]), 0)
             self.assertGreaterEqual(report["ledger"]["cycles_after_restart"], 6)
+            index = report["ledger"]["compiled_evidence_index"]
+            self.assertEqual(index["cycles"], 6)
+            self.assertEqual(index["outstanding_cycles"], 1)
+            self.assertEqual(index["investigation_results"]["committed_verified_revision"], 3)
+            self.assertEqual(index["model_accepted_cycles"], 0)
             self.assertTrue((Path(tmp) / "lab009.json").exists())
 
 
