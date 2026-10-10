@@ -186,6 +186,7 @@ class ConfidenceSearchAgent:
                                 note="Unverified search claim, permanently preserved")
         self.continuity.connect(node_id, self.decision_id, page.relevance,
                                 "Observed topical relevance, not verified truth")
+        if page.physical_deviation is not None:
             measurement = f"{node_id}:measurement"
             physical = f"{node_id}:physical"
             self.continuity.observe(id=measurement, layer="measurement",
