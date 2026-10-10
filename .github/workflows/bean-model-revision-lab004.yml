@@ -60,6 +60,19 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}\bridge\src;${{ github.workspace }}\bean-core;${{ github.workspace }}\bridge
         run: python -m experiments.evolution_lab.model_revision_lab004 --out bean-lab004-report.json
+      - name: Select sparse verification strategy on Linux
+        if: runner.os != 'Windows'
+        working-directory: bridge
+        env:
+          PYTHONPATH: ${{ github.workspace }}/bridge/src:${{ github.workspace }}/bean-core:${{ github.workspace }}/bridge
+        run: python -m experiments.evolution_lab.sparse_calibration_lab004b --out bean-lab004b-report.json
+      - name: Select sparse verification strategy on Windows
+        if: runner.os == 'Windows'
+        working-directory: bridge
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}\bridge\src;${{ github.workspace }}\bean-core;${{ github.workspace }}\bridge
+        run: python -m experiments.evolution_lab.sparse_calibration_lab004b --out bean-lab004b-report.json
       - name: Archive exact results
         if: always()
         uses: actions/upload-artifact@v4
@@ -67,5 +80,6 @@ jobs:
           name: bean-lab004-${{ matrix.os }}
           path: |
             bridge/bean-lab004-report.json
+            bridge/bean-lab004b-report.json
             bridge/bean-lab004-tests.xml
           if-no-files-found: ignore
