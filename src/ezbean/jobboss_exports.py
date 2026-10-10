@@ -325,6 +325,7 @@ class ExportSponge:
               "on_time_shipment_lines":len(shipped_on_time) if shipment else None,
               "past_due_open_job_lines":len(due) if schedule else None,
               "rma_entries":len(rmas) if rma else None,
+              "rma_missing_reason_entries":sum(not row.get("Reason Code") for _,row in rmas) if rma else None,
               "rma_quantity":None,
               "rma_cost_usd":None},
           "rma_reason_counts":reason_counts if rma else None,
