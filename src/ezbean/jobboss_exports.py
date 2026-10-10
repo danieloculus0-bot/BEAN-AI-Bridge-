@@ -151,7 +151,7 @@ def _calendar_date(value,field):
 def _count(value,field,empty=0):
     value=str(value if value is not None else "").strip()
     if not value:return empty
-    if not re.fullmatch(r"(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)(?:\\.0+)?",value):
+    if not re.fullmatch(r"(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)(?:\.0+)?",value):
         raise ValueError(f"{field} must be nonnegative whole units")
     try:
         n=Decimal(value.replace(",",""))
