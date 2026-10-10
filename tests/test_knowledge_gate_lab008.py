@@ -158,8 +158,21 @@ class TestOutputGate(unittest.TestCase):
         report=run(repeat=2,output=Path(self.temp.name)/"protocol.json",
                    transport=Transport(),minimum_accepts=20)
         self.assertEqual((report["total"],report["accepted"],report["failed"]),(20,20,0))
+        self.assertEqual((report["accepted_verified_lookups"],report["accepted_abstentions"]),(12,8))
         self.assertEqual(len(report["definition_history"]["calibration_code"]),2)
         self.assertTrue(all("audit_candidate_untrusted" in row for row in report["raw_observations"]))
+
+    def test_protocol_enforces_minimum_real_answers(self):
+        from experiments.knowledge_lab.run_lab008 import run
+        class AlwaysAbstain:
+            def complete(self,payload):
+                return {"message":{"content":json.dumps({
+                    "concept":payload["requested_concept"],"decision":"abstain",
+                    "value":None,"definition_ids":[]})}}
+        outcome=run(repeat=2,output=Path(self.temp.name)/"abstain.json",
+                    transport=AlwaysAbstain(),minimum_accepts=1,minimum_answers=1)
+        self.assertFalse(outcome["met_minimum"])
+        self.assertEqual(outcome["accepted_verified_lookups"],0)
 
     def test_local_only_ollama(self):
         for url in ("https://localhost:11434","http://example.com:11434",

@@ -70,3 +70,12 @@ The Qwen2.5 **0.5b** 30-query repeat experiment produced **9 accepted abstention
 [Machine evidence and original experiment log](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/runs/38033085153) and [JSON artifact](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/runs/38033085153/artifacts/11662637326).
 
 A second experiment uses a stronger 1.5b local model and captures raw, untrusted candidates and server diagnostics so failure causes can be inspected. Avoid assuming bigger models guarantee adherence; compare measured acceptance rates.
+
+
+## Second measured Ollama comparison (run 38033296146)
+
+Qwen2.5 **1.5b**, same 30-query test: **29/30 accepted (96.67%)**, including **17/18 canonical definition lookups** and **12/12 abstentions**. One malformed first-run citation returned numeric `1` instead of the current library ID `affection@1`; the gate rejected it. Raw untrusted replies and the Ollama server log are archived for auditing. This is promising fidelity on a limited synthetic lookup task, not proof of factual truth or real-world model reliability.
+
+[Successful real-model run](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/runs/38033296146) and [raw JSON/diagnostics artifact](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/runs/38033296146/artifacts/11662223228).
+
+**Promotion gate:** Future live CI requires at least **27 of 30 total accepted** and at least **16 of 18 accepted verified lookups**; otherwise the workflow must fail. This prevents a model that simply abstains on everything from passing.
