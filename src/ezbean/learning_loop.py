@@ -229,6 +229,43 @@ class EvidenceLearningLoop:
                 ).fetchall()]
 
 
+    def compile_evidence(self) -> dict:
+        """Reconstruct an evidence index from the durable cycle ledger.
+
+        Metrics explicitly separate source verification, safe system answers,
+        and LLM acceptance. These totals are not probabilities of truth.
+        """
+        rows = self.history()
+        provenances = set()
+        references = set()
+        statuses = {}
+        questions = set()
+        model_accepted = 0
+        answerable = 0
+        for row in rows:
+            questions.add(row["concept"])
+            kind = row["investigation_status"]
+            statuses[kind] = statuses.get(kind, 0) + 1
+            model_accepted += int(bool(row["model_accepted"]))
+            answerable += int(row["result_status"] == "answerable")
+            for observation in row["observations"]:
+                if observation.get("verified") is True:
+                    provenances.add((observation["origin"], observation["ref"]))
+                    references.add(observation["ref"])
+        return {
+            "kind": "BEAN_RESEARCH_EVIDENCE_COMPILATION",
+            "cycles": len(rows),
+            "concepts": sorted(questions),
+            "system_answerable_cycles": answerable,
+            "model_accepted_cycles": model_accepted,
+            "investigation_results": dict(sorted(statuses.items())),
+            "verified_source_records": len(provenances),
+            "distinct_verified_references": len(references),
+            "outstanding_cycles": sum(row["result_status"] == "unresolved" for row in rows),
+            "note": "Source attestations from a supplied verifier, not authenticated truth probabilities",
+        }
+
+
 class CoreEvidenceJournal:
     """Write learning trace into actual BEAN Core memory, not a mocked store.
 
