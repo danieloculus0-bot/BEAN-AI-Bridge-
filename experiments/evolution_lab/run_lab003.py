@@ -10,10 +10,12 @@ from experiments.evolution_lab.evidence_intelligence import (
     EvidenceAgent, EvidencePolicy, study,
 )
 from experiments.evolution_lab.core_memory_adapter import replay_verified_case
+from experiments.evolution_lab.evidence_lifetime import longitudinal_study
 
 
 def run(out: Path) -> dict:
     results = study()
+    results["longitudinal"] = longitudinal_study()
     pilot = EvidenceAgent(EvidencePolicy(attention_threshold=0.35))
     pilot.observe(0, {"A": 1, "B": 1}, verify=lambda: 0)
     pilot.observe(1, {"A": 1, "B": 0}, verify=lambda: 0)
