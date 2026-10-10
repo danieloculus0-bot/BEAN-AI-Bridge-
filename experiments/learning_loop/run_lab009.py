@@ -148,6 +148,7 @@ def run(output: Path, *, base_dir: Path | None = None) -> dict:
         after_correct = sum(r["system_answer"] == TRUTH[r["concept"]] for r in heldout)
         model_correct = sum(bool(r["model_accepted"]) for r in heldout)
         final_history = loop.history()
+        compiled_index = loop.compile_evidence()
         native_packet = native.context()
         native_records = native.store.fetchone(
             "SELECT COUNT(*) AS n FROM events WHERE subtype='research_learning_loop'"
@@ -178,6 +179,7 @@ def run(output: Path, *, base_dir: Path | None = None) -> dict:
             "model_success_after": model_correct / len(heldout),
         },
         "ledger": {
+            "compiled_evidence_index": compiled_index,
             "cycles_after_restart": len(final_history),
             "definition_revisions": definitions,
             "native_bean_events": native_records,
