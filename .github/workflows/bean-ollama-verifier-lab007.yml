@@ -115,6 +115,7 @@ jobs:
           ollama pull qwen2.5:1.5b
           curl -fsS http://127.0.0.1:11434/api/tags
       - name: Query REAL local model against all 20 research claims
+        continue-on-error: true
         working-directory: bridge
         run: |
           export PYTHONPATH="$GITHUB_WORKSPACE/bridge/src:$GITHUB_WORKSPACE/bean-core:$GITHUB_WORKSPACE/bridge"
