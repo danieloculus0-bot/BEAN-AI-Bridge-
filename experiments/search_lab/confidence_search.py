@@ -34,6 +34,10 @@ class Page:
     relevance: float
     methodology: float
     freshness: float
+    physical_deviation: float | None = None
+    physical_uncertainty: float = 0.1
+    physical_link_strength: float = 0.0
+    physical_link_basis: str = ""
 
 
 @dataclass(frozen=True)
@@ -173,6 +177,31 @@ class ConfidenceSearchAgent:
                                 note="Unverified search claim, permanently preserved")
         self.continuity.connect(node_id, self.decision_id, page.relevance,
                                 "Observed topical relevance, not verified truth")
+        if page.physical_deviation is not None:
+            if (not math.isfinite(page.physical_deviation)
+                or not math.isfinite(page.physical_uncertainty)
+                or not 0 <= page.physical_uncertainty <= 1
+                or not math.isfinite(page.physical_link_strength)
+                or not 0 <= page.physical_link_strength <= 1):
+                raise ValueError("invalid physical trace")
+            if page.physical_link_strength and not page.physical_link_basis.strip():
+                raise ValueError("physical relevance needs a grounded rationale")
+            measurement = f"{node_id}:measurement"
+            physical = f"{node_id}:physical"
+            self.continuity.observe(id=measurement, layer="measurement",
+                                    origin=page.origin, value=page.physical_deviation,
+                                    uncertainty=page.physical_uncertainty,
+                                    note="Supplied measured deviation")
+            self.continuity.observe(id=physical, layer="physical",
+                                    origin=page.origin, value=page.physical_deviation,
+                                    uncertainty=page.physical_uncertainty,
+                                    note="Physical variation preserved even if unrelated")
+            self.continuity.connect(physical, measurement, 1.0,
+                                    "Measurement records supplied physical variation")
+            if page.physical_link_strength:
+                self.continuity.connect(
+                    measurement, node_id, page.physical_link_strength,
+                    page.physical_link_basis)
         self.seen_ids.add(page.page_id)
         self.pages.append(page)
         self.selected_streams.append(page.stream)
@@ -239,6 +268,9 @@ class ConfidenceSearchAgent:
                 "verification_status": "verified_against_independent_audit"
                 if self.verified_truth is not None else "unverified",
                 "stance": page.stance,
+                "physical_relevance": self.continuity.relevance_to(
+                    f"{self.claim_id}:page:{page.page_id}:physical", self.decision_id)
+                if page.physical_deviation is not None else None,
             })
         return sorted(rows, key=lambda row: (-row["ranking_score"], row["page_id"]))
 
