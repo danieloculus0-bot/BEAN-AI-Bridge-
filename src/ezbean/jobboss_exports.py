@@ -359,7 +359,7 @@ def scan_folder(folder,store,stable_seconds=3):
                  "rma_tracker" in name or "rma tracker" in name) and
                 path.suffix.casefold() in (".csv",".xlsx")):
             continue
-        if time.time()-path.stat().st_mtime < stable_seconds:
+        if stable_seconds > 0 and time.time()-path.stat().st_mtime < stable_seconds:
             continue
         try:result.append({"file":path.name,**store.ingest(path)})
         except (OSError,ValueError,KeyError,zipfile.BadZipFile) as exc:
