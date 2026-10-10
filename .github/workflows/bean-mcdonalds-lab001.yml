@@ -1,0 +1,72 @@
+name: BEAN McDonalds Evidence Investigation 001
+
+on:
+  push:
+    branches:
+      - experiment/mcdonalds-evidence-001-20261010
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  investigate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - name: Checkout BEAN Bridge experiment
+        uses: actions/checkout@v4
+        with:
+          path: bridge
+      - name: Checkout pinned BEAN Core
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: 3cf85e63005d97ceaa7484b2d4d61efb0da3ee10
+          path: bean-core
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install test dependencies
+        run: python -m pip install pytest psutil
+      - name: BEAN regression tests Linux
+        if: runner.os != 'Windows'
+        working-directory: bridge
+        env:
+          PYTHONPATH: ${{ github.workspace }}/bridge/src:${{ github.workspace }}/bean-core:${{ github.workspace }}/bridge
+        run: python -m pytest tests -q -ra --tb=short --junitxml=mcdonalds-tests.xml
+      - name: BEAN regression tests Windows
+        if: runner.os == 'Windows'
+        working-directory: bridge
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}\\bridge\\src;${{ github.workspace }}\\bean-core;${{ github.workspace }}\\bridge
+        run: python -m pytest tests -q -ra --tb=short --junitxml=mcdonalds-tests.xml
+      - name: Run McDonalds evidence investigation Linux
+        if: runner.os != 'Windows'
+        working-directory: bridge
+        env:
+          PYTHONPATH: ${{ github.workspace }}/bridge/src:${{ github.workspace }}/bean-core:${{ github.workspace }}/bridge
+        run: python -m experiments.mcdonalds_lab.run_investigation --out mcdonalds-bean-001.json
+      - name: Run McDonalds evidence investigation Windows
+        if: runner.os == 'Windows'
+        working-directory: bridge
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}\\bridge\\src;${{ github.workspace }}\\bean-core;${{ github.workspace }}\\bridge
+        run: python -m experiments.mcdonalds_lab.run_investigation --out mcdonalds-bean-001.json
+      - name: Archive BEAN evidence and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-mcdonalds-001-${{ matrix.os }}
+          path: |
+            bridge/mcdonalds-tests.xml
+            bridge/mcdonalds-bean-001.json
+          if-no-files-found: ignore
