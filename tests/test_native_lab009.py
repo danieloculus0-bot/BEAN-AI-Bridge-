@@ -100,6 +100,36 @@ class TestNativeArchitecture(unittest.TestCase):
         self.assertEqual(len(result["search"]["proposals"]),8)
         self.assertTrue(all(z["classification"] if "classification" in z else True for z in [result]))
 
+    def test_self_hosted_native_api_roundtrip(self):
+        import threading
+        from urllib.request import urlopen, Request
+        from urllib.error import HTTPError
+        from experiments.native_engine.http_gateway import serve,MODEL
+        server=serve(self.db,port=0)
+        thread=threading.Thread(target=server.serve_forever,daemon=True)
+        thread.start()
+        addr="http://127.0.0.1:"+str(server.server_address[1])
+        try:
+            with urlopen(addr+"/api/version") as r:
+                self.assertIn("symbolic",json.load(r)["version"])
+            with urlopen(addr+"/api/tags") as r:
+                self.assertEqual(json.load(r)["models"][0]["name"],MODEL)
+            body=json.dumps({"model":MODEL,"messages":[{"role":"user",
+                "content":json.dumps({"concept":"repair","as_of_utc":"2026-10-10T02:00:00Z"})}]}).encode()
+            with urlopen(Request(addr+"/api/chat",body,headers={"Content-Type":"application/json"})) as r:
+                data=json.load(r)
+            self.assertTrue(data["verification"]["accepted"])
+            self.assertIn("audit history",data["message"]["content"])
+            self.assertEqual(data["verification"]["definition_id"],"repair@1")
+            bad=json.dumps({"model":MODEL,"messages":[{"role":"user","content":"guess anything"}]}).encode()
+            with self.assertRaises(HTTPError) as failure:
+                urlopen(Request(addr+"/api/chat",bad,headers={"Content-Type":"application/json"}))
+            self.assertEqual(failure.exception.code,400)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
     def test_proposal_never_mutates_main_or_model_weights(self):
         result=experiment(Path(self.temp.name)/"isolated",self.backend,seed=110,iterations=6)
         self.assertTrue("Selected" not in json.dumps(result["limitations"]))
