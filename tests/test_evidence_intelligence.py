@@ -148,3 +148,22 @@ def test_source_learning_ablation_is_truth_blind_and_reproducible():
     agent.observe(0, {"A": 1, "B": 1}, verify=lambda: 0)
     assert agent.source_accuracy("A") == before
     assert agent.reliability["A"][1] > 1
+
+
+def test_unprompted_investigation_starts_without_a_periodic_oracle():
+    policy = EvidencePolicy(attention_threshold=0.55, max_probes=3,
+                            independent_check_period=0, probe_confidence=0.53)
+    agent = EvidenceAgent(policy)
+    assert not agent.hypotheses
+    out = agent.observe(0, {"A": 1, "B": 1}, verify=lambda: 1)
+    assert out["action"] == "verify"
+    assert agent.belief == 1
+    assert agent.detected_at == 0
+
+
+def test_sensor_disagreement_gets_attention_without_existing_hypothesis():
+    policy = EvidencePolicy(attention_threshold=0.55, independent_check_period=0)
+    agent = EvidenceAgent(policy)
+    out = agent.observe(0, {"A": 1, "B": 0}, verify=lambda: 0)
+    assert out["action"] == "verify"
+    assert "source_A_unreliable" in agent.hypotheses
