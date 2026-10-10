@@ -46,7 +46,7 @@ jobs:
         working-directory: bridge
         shell: pwsh
         env:
-          PYTHONPATH: ${{ github.workspace }}\\bridge\\src;${{ github.workspace }}\\bean-core;${{ github.workspace }}\\bridge
+          PYTHONPATH: ${{ github.workspace }}\bridge\src;${{ github.workspace }}\bean-core;${{ github.workspace }}\bridge
         run: python -m pytest tests -q -ra --tb=short --junitxml=mcdonalds-tests.xml
       - name: Run McDonalds evidence investigation Linux
         if: runner.os != 'Windows'
@@ -59,7 +59,7 @@ jobs:
         working-directory: bridge
         shell: pwsh
         env:
-          PYTHONPATH: ${{ github.workspace }}\\bridge\\src;${{ github.workspace }}\\bean-core;${{ github.workspace }}\\bridge
+          PYTHONPATH: ${{ github.workspace }}\bridge\src;${{ github.workspace }}\bean-core;${{ github.workspace }}\bridge
         run: python -m experiments.mcdonalds_lab.run_investigation --out mcdonalds-bean-001.json
       - name: Archive BEAN evidence and test results
         if: always()
