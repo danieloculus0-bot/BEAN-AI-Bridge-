@@ -89,6 +89,11 @@ jobs:
         run: |
           export PYTHONPATH="$GITHUB_WORKSPACE/bridge/src:$GITHUB_WORKSPACE/bridge"
           python -m experiments.native_engine.native_lab --model qwen2.5:0.5b --seed 106 --iterations 10 --output-dir lab009-results --bean-core ../bean-core
+      - name: Independent heldout audit of BEAN-selected architecture
+        working-directory: bridge
+        run: |
+          export PYTHONPATH="$GITHUB_WORKSPACE/bridge/src:$GITHUB_WORKSPACE/bridge"
+          python -m experiments.native_engine.independent_verifier --input lab009-results/lab009-results.json
       - name: Preserve backend service log
         if: always()
         run: cp /tmp/bean-native-ollama.log bridge/lab009-results/ollama-server.log 2>/dev/null || true
