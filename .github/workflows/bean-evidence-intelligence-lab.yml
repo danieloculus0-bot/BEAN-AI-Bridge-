@@ -1,0 +1,51 @@
+name: BEAN Lab 003 evidence intelligence
+
+on:
+  push:
+    branches:
+      - experiment/bean-evidence-intelligence-20261010
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Bridge sandbox
+        uses: actions/checkout@v4
+        with:
+          path: bridge
+      - name: Checkout verified BEAN Core
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: 3cf85e63005d97ceaa7484b2d4d61efb0da3ee10
+          path: bean-core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install test tooling
+        run: python -m pip install pytest psutil
+      - name: Run full Bridge regression and cognition integration
+        working-directory: bridge
+        run: |
+          export PYTHONPATH="$PWD/src:$GITHUB_WORKSPACE/bean-core:$PWD"
+          python -m pytest tests -q -ra --tb=short --junitxml=evidence-lab-tests.xml
+      - name: Run evidence evolution on held-out synthetic scenarios
+        working-directory: bridge
+        run: |
+          export PYTHONPATH="$PWD/src:$GITHUB_WORKSPACE/bean-core:$PWD"
+          python -m experiments.evolution_lab.run_lab003 --out evidence-lab-report.json
+      - name: Preserve reproducible audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-lab003-evidence
+          path: |
+            bridge/evidence-lab-tests.xml
+            bridge/evidence-lab-report.json
+          if-no-files-found: ignore
