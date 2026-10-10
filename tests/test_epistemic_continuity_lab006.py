@@ -179,3 +179,22 @@ def test_ungrounded_physical_link_is_rejected_before_ranking():
         agent.inspect(Page("groundless", "primary", "test", 1, .8, .8, .8,
                            physical_deviation=.00001,
                            physical_link_strength=.9))
+
+
+def test_even_perfect_prior_history_cannot_make_search_self_confidence_absolute():
+    agent = ConfidenceSearchAgent()
+    agent.self_correct = [1e15, 1.0]
+    agent.stream_correct["primary"] = [1e15, 1.0]
+    assert 0 < agent.own_confidence() < 1.0
+    assert 0 < agent.stream_confidence("primary") < 1.0
+    assert agent.continuity.describe(agent.claim_id, agent.decision_id)["learning_status"] == "always_open"
+
+
+def test_failed_physical_prevalidation_leaves_evidence_ledger_unchanged():
+    agent = ConfidenceSearchAgent()
+    previous = len(agent.continuity.nodes)
+    with pytest.raises(ValueError, match="grounded rationale"):
+        agent.inspect(Page("badlink", "primary", "test", 1, .8, .8, .8,
+                           physical_deviation=.001, physical_link_strength=.9))
+    assert len(agent.continuity.nodes) == previous
+    assert not agent.pages
