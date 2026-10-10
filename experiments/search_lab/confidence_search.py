@@ -68,6 +68,7 @@ class ConfidenceSearchAgent:
 
     def reset(self):
         self.episode += 1
+        self.feedback_count = 0
         self.claim_id = f"claim:search:{self.episode}"
         self.decision_id = f"decision:search:{self.episode}"
         self.continuity.observe(id=self.decision_id, layer="decision",
@@ -260,7 +261,8 @@ class ConfidenceSearchAgent:
             self.continuity.add_claim_evidence(
                 self.claim_id, f"{self.claim_id}:page:{page.page_id}",
                 supports=bool(page.stance), independently_verified=False)
-        verified_id = f"{self.claim_id}:verification"
+        self.feedback_count += 1
+        verified_id = f"{self.claim_id}:verification:{self.feedback_count}"
         self.continuity.observe(id=verified_id, layer="claim",
                                 origin=f"synthetic_verifier:{self.episode}",
                                 value=float(verified_outcome), uncertainty=0.01)
