@@ -66,7 +66,7 @@ def run(model="qwen2.5:0.5b",repeat=3,output=Path("lab008-results.json"),
                 except Exception as exc:
                     result=dict(accepted=False,reason="provider_error",
                                 error=f"{type(exc).__name__}: {str(exc)[:300]}",output=None)
-                observations.append(dict(cycle=cycle+1,concept=concept,as_of=at,**result))
+                observations.append({"cycle":cycle+1,"requested_concept":concept,"as_of":at,**result})
         db.close()
     counts=Counter(r["reason"] for r in observations)
     accepted=sum(r["accepted"] for r in observations)
