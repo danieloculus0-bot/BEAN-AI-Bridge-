@@ -46,10 +46,10 @@ python -m unittest discover -s tests -v
 
 ## Live local Ollama protocol
 
-Requires an actually installed local `ollama` daemon and `ollama pull qwen2.5:0.5b`. No remote/cloud provider fallback.
+Requires an actually installed local `ollama` daemon; the CI comparison uses `ollama pull qwen2.5:1.5b`. No remote/cloud provider fallback.
 
 ```bash
-PYTHONPATH=src python -m experiments.knowledge_lab.run_lab008 --model qwen2.5:0.5b --repeat 3 --out lab008-live-output-gate.json
+PYTHONPATH=src python -m experiments.knowledge_lab.run_lab008 --model qwen2.5:1.5b --repeat 3 --out lab008-live-output-gate.json
 ```
 
 Thirty calls are made in alternating forward/reverse orders across ten synthetic concepts, including a revised calibration code whose answer depends on requested date. Each call records *candidate acceptance*, not independent fact correctness. The full report counts failures by reason, so repeated underperformance is visible even if some calls pass.
@@ -61,3 +61,12 @@ GitHub Actions workflow: [.github/workflows/bean-dynamic-definitions-lab008.yml]
 Wire this gate into actual BEAN reasoning/provider output dispatch only after multi-model evaluation and independently authenticated definition ingestion. Keep ERP deterministic KPI calculations and the BEAN Core relationship/trust model separate. All concepts in this lab are intentionally example-only, not an authoritative ontology.
 
 **Primary mechanism** here means mandatory contract validation for **this experimental output path**. It does not yet govern every existing BEAN or ERP response.
+
+
+## First measured Ollama baseline (run 38033085153)
+
+The Qwen2.5 **0.5b** 30-query repeat experiment produced **9 accepted abstentions, 21 rejected/failed, and no accepted canonical answers**. It showed 15 stale/hallucinated-reference rejections, 3 model/server HTTP 500 errors, 3 incorrect answers where definitions were missing, and 9 accepted abstentions. This is a **failed model-output fidelity baseline**, not a successful verification. The gate did its job by blocking all rejected values from the approved final-output channel.
+
+[Machine evidence and original experiment log](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/runs/38033085153) and [JSON artifact](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/runs/38033085153/artifacts/11662637326).
+
+A second experiment uses a stronger 1.5b local model and captures raw, untrusted candidates and server diagnostics so failure causes can be inspected. Avoid assuming bigger models guarantee adherence; compare measured acceptance rates.

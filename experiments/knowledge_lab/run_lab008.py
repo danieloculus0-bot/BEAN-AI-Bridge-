@@ -43,7 +43,7 @@ def seed(lib):
 def run(model="qwen2.5:0.5b",repeat=3,output=Path("lab008-results.json"),
         transport=None, minimum_accepts=1):
     if not 1<=repeat<=20: raise ValueError("repeat outside 1..20")
-    if not 0<=minimum_accepts<=repeat*8: raise ValueError("invalid minimum")
+    if not 0<=minimum_accepts<=repeat*10: raise ValueError("invalid minimum")
     output=Path(output)
     output.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="bean_definitions_lab008_") as t:
@@ -67,6 +67,11 @@ def run(model="qwen2.5:0.5b",repeat=3,output=Path("lab008-results.json"),
                     result=dict(accepted=False,reason="provider_error",
                                 error=f"{type(exc).__name__}: {str(exc)[:300]}",output=None)
                 observations.append({"cycle":cycle+1,"requested_concept":concept,"as_of":at,**result})
+        library_history = {concept:[dict(
+            definition_id=d.definition_id, revision=d.revision, value=d.value,
+            status=d.status, evidence_refs=d.evidence_refs,
+            valid_from=d.valid_from, expires_at=d.expires_at
+        ) for d in db.history(concept)] for concept in sorted({key for key,_ in tasks})}
         db.close()
     counts=Counter(r["reason"] for r in observations)
     accepted=sum(r["accepted"] for r in observations)
@@ -84,6 +89,7 @@ def run(model="qwen2.5:0.5b",repeat=3,output=Path("lab008-results.json"),
         minimum_accepts=minimum_accepts,
         met_minimum=accepted>=minimum_accepts and len(observations)>0,
         raw_observations=observations,
+        definition_history=library_history,
         limitations=[
           "Evidence references identify researcher-generated fixtures, not external verification.",
           "Model outputs are proposals; accepted final values are deterministically rendered from SQLite.",
