@@ -198,7 +198,7 @@ class EvidenceLearningLoop:
         # It is NOT relabeled as an LLM success; the model's original gate
         # acceptance remains a separate metric.
         current, _ = self.library.lookup(concept, timestamp)
-        answer = current.value if current is not None else None
+        answer = current.value if current is not None and investigation_status != "conflicting_verified_evidence" else None
         outcome = LearningOutcome(
             cycle_id=cycle_id, concept=concept, initial_status=status,
             investigation_status=investigation_status,
@@ -302,7 +302,9 @@ class CoreEvidenceJournal:
             if key:
                 options = self.garden.options(key)
                 if options:
-                    self.garden.resolve(key, options[0]["option_id"],
+                    expected = ("stale" if details["result"] == "committed_verified_revision" else "correct")
+                    selected = next((o for o in options if expected in o["interpretation"].lower()), options[0])
+                    self.garden.resolve(key, selected["option_id"],
                                         "The host verifier supplied corroborating independent records")
 
     def context(self) -> dict:
