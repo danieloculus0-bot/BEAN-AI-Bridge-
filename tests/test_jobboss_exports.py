@@ -152,6 +152,23 @@ class JobBossSpongeTests(unittest.TestCase):
         self.assertEqual(len(result),2)
         result2=scan_folder(self.root,self.store,stable_seconds=0)
         self.assertTrue(all(r["status"]=="duplicate" for r in result2))
+    def test_malformed_historical_rma_date_is_quarantined_and_auditable(self):
+        path=self.root/"RMA_Tracker(20261001-131728).xlsx"
+        from datetime import date
+        ok_serial=(date(2026,9,3)-date(1899,12,30)).days
+        write_xlsx(path,[RMA_FIELDS,
+            [ok_serial,"J1","Synthetic Co","Weld","","Bad hole","Dimensional"],
+            ["8/28/206","J2","Synthetic Co","Powder","","Bad coating","Cosmetic"]])
+        state=self.store.ingest(path)
+        self.assertEqual(state["status"],"imported")
+        self.assertEqual(state["quarantined_rows"],1)
+        duplicate=self.store.ingest(path)
+        self.assertEqual(duplicate["quarantined_rows"],1)
+        report=self.store.report("2026-09-01","2026-10-02T00:00:00Z")
+        self.assertEqual(report["metrics"]["rma_entries"],1)
+        self.assertEqual(len(report["quarantined_rma_rows"]),1)
+        self.assertIn(":3",report["quarantined_rma_rows"][0]["row_ref"])
+
     def test_only_recognized_rma_log_sheet(self):
         path=self.rma()
         self.store.ingest(path)
