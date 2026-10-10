@@ -13,7 +13,8 @@ def transport(path, payload=None):
     assert payload["stream"] is False
     assert payload["format"] == "json"
     supplied = json.loads(payload["messages"][1]["content"])
-    ids = [item["id"] for item in supplied["linked_source_metadata_and_researcher_tags"]]
+    assert all("analyst_tag" not in item for item in supplied["linked_source_metadata_BLIND_TO_RESEARCHER_VERDICT"])
+    ids = [item["id"] for item in supplied["linked_source_metadata_BLIND_TO_RESEARCHER_VERDICT"]]
     return {"model": "qwen2.5:0.5b", "message": {"content": json.dumps({
         "verdict": "insufficient", "rationale": "These notes do not directly authenticate the claim.",
         "cited_source_ids": ids[:1], "next_check": "Inspect the original primary records."
