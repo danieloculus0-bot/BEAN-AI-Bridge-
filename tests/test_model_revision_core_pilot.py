@@ -12,3 +12,13 @@ def test_real_core_stores_multiple_verifications_and_model_revision(tmp_path):
     assert all(x == "verify" for x in report["inspection_actions"])
     assert all(v == "approved" for v in report["core"]["epistemic_verdicts"])
     assert report["core"]["motion_enabled"] is False
+
+
+def test_replay_releases_temp_sqlite_file_before_cleanup():
+    from pathlib import Path
+    from tempfile import TemporaryDirectory
+
+    with TemporaryDirectory(prefix="bean_sqlite_teardown_") as temp:
+        result = run_pilot(str(Path(temp) / "temporary.db"))
+        assert result["core"]["verified_events"] == 2
+    assert not Path(temp).exists()
