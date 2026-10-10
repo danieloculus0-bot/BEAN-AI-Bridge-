@@ -5,7 +5,7 @@ import pytest
 
 from experiments.evolution_lab.evidence_intelligence import (
     EvidenceAgent, EvidencePolicy, TRAIN_PROFILES, ADVERSARIAL_PROFILES,
-    case_for, evaluate_evidence, train_policy,
+    case_for, evaluate_evidence, evaluate_previous, train_policy, study,
 )
 
 
@@ -90,7 +90,7 @@ def test_invalid_profile_rejected():
         case_for(1, "nonsense")
 
 
-@pytest.mark.parametrize("profile", ["standard", "correlated_noise", "delayed_sensors", "drifting_a", "stuck_b"])
+@pytest.mark.parametrize("profile", ["standard", "correlated_noise", "delayed_sensors", "drifting_a", "stuck_b", "late_shift", "early_shift"])
 def test_test_evidence_reports_truth_blind_scores(profile):
     result = evaluate_evidence(EvidencePolicy(), list(range(16000, 16008)), profile)
     assert result["episodes"] == 8
@@ -119,3 +119,32 @@ def test_train_selects_policy_on_separate_seeds_and_is_reproducible():
 def test_search_bounds():
     with pytest.raises(ValueError):
         train_policy(population=1)
+
+
+def test_shifted_event_times_are_not_in_training_schedule():
+    late = case_for(16000, "late_shift")
+    early = case_for(16000, "early_shift")
+    assert late["changed"] == early["changed"]
+    assert [x[-1] for x in late["timeline"]] != [x[-1] for x in early["timeline"]]
+    assert late["change_at"] in (8, 9, 10)
+    assert early["change_at"] in (1, 2)
+
+
+def test_fixed_comparator_same_as_original_on_training_profiles():
+    from experiments.evolution_lab.bridge_evolution import RULE_COMPARATOR, evaluate
+    for profile in TRAIN_PROFILES:
+        a = evaluate_previous(list(range(16000, 16010)), profile)
+        b = evaluate(RULE_COMPARATOR, list(range(16000, 16010)), profile)
+        assert a["mean_score"] == b["mean_score"]
+        assert a["change_recall"] == b["change_recall"]
+
+
+def test_source_learning_ablation_is_truth_blind_and_reproducible():
+    from dataclasses import replace
+    p = EvidencePolicy(max_probes=3)
+    without_learning = replace(p, learn_sensor_reliability=False)
+    agent = EvidenceAgent(without_learning)
+    before = agent.source_accuracy("A")
+    agent.observe(0, {"A": 1, "B": 1}, verify=lambda: 0)
+    assert agent.source_accuracy("A") == before
+    assert agent.reliability["A"][1] > 1
