@@ -1,0 +1,37 @@
+name: BEAN JobBOSS export sponge smoke
+
+on:
+  push:
+    branches:
+      - feature/jobboss-spreadsheet-sponge-20261010
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  jobboss-extract-replay:
+    name: JobBOSS file drop and replay (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile bridge and importer
+        run: python -m compileall -q src tests
+      - name: Run original bridge plus JobBOSS synthetic regression
+        run: python -m unittest discover -s tests -v
+      - name: Repeat JobBOSS suite
+        run: python -m unittest discover -s tests -p test_jobboss_exports.py -v
+      - name: Confirm import CLI available without ERP connectivity
+        run: python -m ezbean.jobboss_exports --help
