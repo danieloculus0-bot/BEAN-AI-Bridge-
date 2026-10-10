@@ -23,9 +23,10 @@ class RevisionRules:
     surprise_likelihood: float = 0.30
     confirmations: int = 2
     independent_audits: bool = False
+    audit_probability: float = 1.0
 
     def __post_init__(self):
-        if not 0 < self.surprise_likelihood < 0.5 or not 1 <= self.confirmations <= 6:
+        if not 0 < self.surprise_likelihood < 0.5 or not 1 <= self.confirmations <= 6 or not 0 <= self.audit_probability <= 1:
             raise ValueError("invalid change-point rules")
 
 
@@ -140,9 +141,10 @@ def evaluate_history(profiles: list[str], seeds: list[int], rules: RevisionRules
         # The independent-audit schedule is generated separately from sensor
         # and state RNG; no ground-truth value affects this sampling decision.
         audit_step = random.Random(seed ^ 0x5F91E0).randrange(1, 12)
+        audit_enabled = random.Random(seed ^ 0xA920D1).random() < rules.audit_probability
         for step, (a, b, truth) in enumerate(case["timeline"]):
             agent.observe(step, {"A": a, "B": b}, lambda value=truth: value,
-                          independent_audit=(step == audit_step))
+                          independent_audit=(audit_enabled and step == audit_step))
             predicted = agent.forecasts[-1]["p_state_1"]
             error_sum += (predicted - truth) ** 2
             forecast_count += 1
