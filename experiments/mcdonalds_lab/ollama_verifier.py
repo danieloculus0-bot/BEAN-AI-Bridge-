@@ -87,16 +87,15 @@ class OllamaClient:
                 "id": item["source_id"],
                 "publisher": src["origin"],
                 "url_for_identification_only": src["url"],
-                "analyst_tag": "refutes_claim" if item["stance"] == 0 else "supports_claim",
             })
         # The supplied explanation is a claim-level *analyst* summary, not a
         # source quotation. Keep the provenance limitation explicit in each prompt.
         evidence = {
             "literal_claim": claim["title"],
             "analyst_summary_NOT_independent_verified_evidence": claim["explanation"],
-            "linked_source_metadata_and_researcher_tags": linked,
+            "linked_source_metadata_BLIND_TO_RESEARCHER_VERDICT": linked,
             "task": "Review whether the literal claim is supported BY THESE NOTES. "
-                    "Cite only ID values in linked_source_metadata_and_researcher_tags. "
+                    "Cite only ID values in linked_source_metadata_BLIND_TO_RESEARCHER_VERDICT. "
                     "Say what missing primary evidence you would next seek. Return JSON only.",
         }
         completion = self.request_fn("/api/chat", {
