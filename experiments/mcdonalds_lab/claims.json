@@ -1,0 +1,544 @@
+{
+  "metadata": {
+    "label": "BEAN_MCDONALDS_CURATED_PUBLIC_EVIDENCE_001",
+    "as_of": "2026-10-10",
+    "method": "Published sources manually reviewed; no BEAN live crawling or authenticated ingredient sampling",
+    "limitation": "The evidence strength scores are analyst heuristics; claim-probability estimates are NOT calibrated truth probabilities. Manufacturer statements are not independent testing."
+  },
+  "sources": {
+    "ap_human": {
+      "url": "https://apnews.com/article/archive-fact-checking-9233643423",
+      "origin": "apnews.com",
+      "stream": "independent",
+      "methodology": 0.92,
+      "freshness": 0.67
+    },
+    "reuters_human": {
+      "url": "https://www.reuters.com/article/fact-check/mcdonalds-human-meat-claims-stem-from-satire-article-idUSL2N2NT1SV/",
+      "origin": "reuters.com",
+      "stream": "independent",
+      "methodology": 0.92,
+      "freshness": 0.71
+    },
+    "snopes_human": {
+      "url": "https://www.snopes.com/fact-check/swap-meat/",
+      "origin": "snopes.com",
+      "stream": "archive",
+      "methodology": 0.85,
+      "freshness": 0.28
+    },
+    "pf_fetal": {
+      "url": "https://www.politifact.com/factchecks/2021/dec/17/facebook-posts/no-mcdonalds-doesnt-put-aborted-baby-fetuses-its-f/",
+      "origin": "politifact.com",
+      "stream": "independent",
+      "methodology": 0.91,
+      "freshness": 0.75
+    },
+    "pf_bodysupplier": {
+      "url": "https://www.politifact.com/factchecks/2024/oct/02/instagram-posts/that-burger-is-safe-to-eat-human-remains-were-not/",
+      "origin": "politifact.com",
+      "stream": "independent",
+      "methodology": 0.95,
+      "freshness": 0.92
+    },
+    "clear_labs": {
+      "url": "https://www.prweb.com/releases/clear_labs_releases_molecular_analysis_of_258_burger_products/prweb13403440.htm",
+      "origin": "clear-labs-study",
+      "stream": "primary",
+      "methodology": 0.86,
+      "freshness": 0.37
+    },
+    "pf_human2017": {
+      "url": "https://www.politifact.com/factchecks/2017/sep/28/blog-posting/fake-news-human-remains-were-not-found-mcdonalds-h/",
+      "origin": "politifact.com",
+      "stream": "independent",
+      "methodology": 0.91,
+      "freshness": 0.47
+    },
+    "fc_dna": {
+      "url": "https://english.factcrescendo.com/2026/09/30/mcdonalds-burgers-no-human-dna-hoax/",
+      "origin": "factcrescendo.com",
+      "stream": "independent",
+      "methodology": 0.79,
+      "freshness": 0.99
+    },
+    "mutant_origin": {
+      "url": "https://quatrocantos.com/lendas/22_coisas_mcdonald.htm",
+      "origin": "quatrocantos.com",
+      "stream": "archive",
+      "methodology": 0.7,
+      "freshness": 0.29
+    },
+    "snopes_worms": {
+      "url": "https://www.snopes.com/fact-check/worm-meat-used-mcdonalds-hamburgers/",
+      "origin": "snopes.com",
+      "stream": "archive",
+      "methodology": 0.83,
+      "freshness": 0.26
+    },
+    "snopes_wormoutbreak": {
+      "url": "https://www.snopes.com/fact-check/mcdonalds-parasitic-worm-outbreak/",
+      "origin": "snopes.com",
+      "stream": "independent",
+      "methodology": 0.84,
+      "freshness": 0.45
+    },
+    "mc_beef": {
+      "url": "https://www.mcdonalds.com/us/en-us/faq/what-kind-of-beef-does-mcdonald-s-use-in-your-burgers.html",
+      "origin": "mcdonalds.com",
+      "stream": "primary",
+      "methodology": 0.6,
+      "freshness": 0.84
+    },
+    "mc_nuggets": {
+      "url": "https://www.mcdonalds.com/us/en-us/faq/what-s-in-chicken-mcnuggets.html",
+      "origin": "mcdonalds.com",
+      "stream": "primary",
+      "methodology": 0.6,
+      "freshness": 0.88
+    },
+    "mc_pinknuggets": {
+      "url": "https://www.mcdonalds.com/us/en-us/faq/do-you-use-so-called--pink-slime--or--pink-goop--in-your-chicken-mcnuggets.html",
+      "origin": "mcdonalds.com",
+      "stream": "primary",
+      "methodology": 0.58,
+      "freshness": 0.84
+    },
+    "fox_mouse": {
+      "url": "https://www.foxnews.com/food-drink/mcdonalds-customer-claims-she-found-dead-mouse-in-mcchicken",
+      "origin": "foxnews.com",
+      "stream": "independent",
+      "methodology": 0.6,
+      "freshness": 0.5
+    },
+    "crs_pink": {
+      "url": "https://www.everycrsreport.com/reports/R42473.html",
+      "origin": "congressional-research-service",
+      "stream": "primary",
+      "methodology": 0.96,
+      "freshness": 0.3
+    },
+    "abc_pink": {
+      "url": "https://abcnews.com/blogs/health/2012/02/01/mcdonalds-announces-end-to-pink-slime-in-burgers",
+      "origin": "abcnews.com",
+      "stream": "independent",
+      "methodology": 0.89,
+      "freshness": 0.25
+    },
+    "pf_85": {
+      "url": "https://staging.politifact.com/factchecks/2014/sep/03/facebook-posts/blogger-claims-mcdonalds-burgers-are-made-85-perce/",
+      "origin": "politifact.com",
+      "stream": "independent",
+      "methodology": 0.88,
+      "freshness": 0.31
+    },
+    "npr_mcrib": {
+      "url": "https://www-s1.npr.org/sections/thesalt/2011/11/04/142018151/from-nebraska-lab-to-mcdonalds-tray-the-mcribs-strange-journey",
+      "origin": "npr.org",
+      "stream": "independent",
+      "methodology": 0.94,
+      "freshness": 0.29
+    },
+    "cbs_mcrib": {
+      "url": "https://www.cbsnews.com/chicago/news/lawsuit-accuses-mcdonalds-deception-mcrib-has-no-rib-meat/",
+      "origin": "cbsnews.com",
+      "stream": "independent",
+      "methodology": 0.89,
+      "freshness": 0.98
+    },
+    "ff_monitor": {
+      "url": "https://fullfact.org/online/McDonalds-pesticide-Monitor-false/",
+      "origin": "fullfact.org",
+      "stream": "independent",
+      "methodology": 0.94,
+      "freshness": 0.95
+    },
+    "lead_monitor": {
+      "url": "https://leadstories.com/hoax-alert/2022/11/fact-check-mcdonalds-fries-do-not-contain-an-insecticide-named-monitor.html",
+      "origin": "leadstories.com",
+      "stream": "independent",
+      "methodology": 0.91,
+      "freshness": 0.81
+    },
+    "pf_monitor": {
+      "url": "https://www.politifact.com/factchecks/2022/oct/28/instagram-posts/the-pesticide-monitor-hasnt-been-used-on-potatoes/",
+      "origin": "politifact.com",
+      "stream": "independent",
+      "methodology": 0.92,
+      "freshness": 0.79
+    },
+    "pf_silicone": {
+      "url": "https://www.politifact.com/factchecks/2024/nov/22/facebook-posts/no-mcdonalds-chicken-mcnuggets-in-the-us-do-not-co/",
+      "origin": "politifact.com",
+      "stream": "independent",
+      "methodology": 0.93,
+      "freshness": 0.94
+    },
+    "snopes_silicone": {
+      "url": "https://www.snopes.com/fact-check/mcdonalds-mcnuggets-silicone-oil/",
+      "origin": "snopes.com",
+      "stream": "independent",
+      "methodology": 0.91,
+      "freshness": 0.94
+    },
+    "mc_fries": {
+      "url": "https://www.mcdonalds.com/us/en-us/faq/do-you-add-any-type-of-flavor-when-preparing-your-fries.html",
+      "origin": "mcdonalds.com",
+      "stream": "primary",
+      "methodology": 0.6,
+      "freshness": 0.84
+    },
+    "mc_decay": {
+      "url": "https://corporate.mcdonalds.com/corpmcd/our-stories/article/burger-myths-busted.html",
+      "origin": "mcdonalds.com",
+      "stream": "primary",
+      "methodology": 0.61,
+      "freshness": 0.82
+    },
+    "fortune_decay": {
+      "url": "https://fortune.com/2016/02/09/mcdonalds-happy-meal/",
+      "origin": "fortune.com",
+      "stream": "independent",
+      "methodology": 0.87,
+      "freshness": 0.48
+    }
+  },
+  "claims": [
+    {
+      "id": 1,
+      "title": "Human flesh used in hamburgers",
+      "assessment": "fabricated_origin",
+      "explanation": "2014 Huzlers satire traced by independent investigations",
+      "evidence": [
+        {
+          "source_id": "ap_human",
+          "stance": 0
+        },
+        {
+          "source_id": "reuters_human",
+          "stance": 0
+        },
+        {
+          "source_id": "snopes_human",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Children's remains used in meat processing",
+      "assessment": "fabricated_origin",
+      "explanation": "Child-remains detail is part of the same Huzlers hoax, not a separate discovery",
+      "evidence": [
+        {
+          "source_id": "ap_human",
+          "stance": 0
+        },
+        {
+          "source_id": "reuters_human",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Aborted fetal tissue in McNuggets",
+      "assessment": "unsupported_refuted",
+      "explanation": "Independent fact-check found no evidence; alleged use of cell lines in research is not food tissue",
+      "evidence": [
+        {
+          "source_id": "pf_fetal",
+          "stance": 0
+        },
+        {
+          "source_id": "mc_nuggets",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "FBI uncovered McDonald's human-body supplier",
+      "assessment": "misattributed_real_event",
+      "explanation": "Genuine Detroit body-parts investigation was unrelated to McDonald's",
+      "evidence": [
+        {
+          "source_id": "pf_bodysupplier",
+          "stance": 0
+        },
+        {
+          "source_id": "ap_human",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "McDonald's burger contains 2 percent human DNA",
+      "assessment": "misrepresented_study",
+      "explanation": "2016 study tested 258 anonymized samples and detected human DNA once in a vegetarian burger; not two percent",
+      "evidence": [
+        {
+          "source_id": "clear_labs",
+          "stance": 0
+        },
+        {
+          "source_id": "fc_dna",
+          "stance": 0
+        },
+        {
+          "source_id": "pf_human2017",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Limbless engineered creatures grown for meat",
+      "assessment": "unsubstantiated_urban_legend",
+      "explanation": "Circulating March 2000 Brazilian chain message falsely attributed to Michigan State University",
+      "evidence": [
+        {
+          "source_id": "mutant_origin",
+          "stance": 0
+        },
+        {
+          "source_id": "mc_beef",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Rat meat secretly added to McDonald's patties",
+      "assessment": "misattributed_study",
+      "explanation": "Rat DNA was detected in some anonymized burgers across industry samples; brands not identified",
+      "evidence": [
+        {
+          "source_id": "clear_labs",
+          "stance": 0
+        },
+        {
+          "source_id": "pf_human2017",
+          "stance": 0
+        },
+        {
+          "source_id": "mc_beef",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Cow eyeballs are routinely ground into patties",
+      "assessment": "unsubstantiated_urban_legend",
+      "explanation": "Old '100% beef company' naming trick is folklore rather than sourcing evidence",
+      "evidence": [
+        {
+          "source_id": "snopes_worms",
+          "stance": 0
+        },
+        {
+          "source_id": "mc_beef",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Earthworm filler routinely added to hamburgers",
+      "assessment": "unsubstantiated_urban_legend",
+      "explanation": "At least 1978; cost claims and supposed government reports were not substantiated",
+      "evidence": [
+        {
+          "source_id": "snopes_worms",
+          "stance": 0
+        },
+        {
+          "source_id": "snopes_wormoutbreak",
+          "stance": 0
+        },
+        {
+          "source_id": "mc_beef",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "McDonald's secretly substitutes horse meat",
+      "assessment": "unsupported_refuted",
+      "explanation": "Horse-meat allegation embedded in satirical human-meat hoax, not a verified McDonald's recall",
+      "evidence": [
+        {
+          "source_id": "snopes_human",
+          "stance": 0
+        },
+        {
+          "source_id": "mc_beef",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Dead mouse confirmed inside a McChicken",
+      "assessment": "disputed_unverified_incident",
+      "explanation": "2018 customer's claim reported; McDonald's attributed apparent tail to chicken blood vessel; no verified identification",
+      "evidence": [
+        {
+          "source_id": "fox_mouse",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "McNuggets use pink industrial slurry instead of meat",
+      "assessment": "unsupported_refuted",
+      "explanation": "Famous pink-slurry photo not the chain's nugget production; present U.S. ingredient list describes boneless chicken",
+      "evidence": [
+        {
+          "source_id": "mc_pinknuggets",
+          "stance": 0
+        },
+        {
+          "source_id": "mc_nuggets",
+          "stance": 0
+        },
+        {
+          "source_id": "pf_silicone",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "McNuggets use beaks claws and bones as main ingredient",
+      "assessment": "unsupported_refuted",
+      "explanation": "McDonald's specifies boneless white chicken; independent supplier-specific lab test not reviewed",
+      "evidence": [
+        {
+          "source_id": "mc_nuggets",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Hamburgers are 85 percent cancer-causing ammonia filler",
+      "assessment": "false_with_historical_kernel",
+      "explanation": "2011 discontinuation of ammonium-treated lean finely textured beef is documented; 85 percent and cancer claims unsupported",
+      "evidence": [
+        {
+          "source_id": "crs_pink",
+          "stance": 0
+        },
+        {
+          "source_id": "pf_85",
+          "stance": 0
+        },
+        {
+          "source_id": "abc_pink",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "McRib is molded sludge from inedible parts",
+      "assessment": "mixed_real_practice",
+      "explanation": "Pork restructured through genuine meat technology; 2025 lawsuit alleges deceptive rib branding and offal, company disputes offal",
+      "evidence": [
+        {
+          "source_id": "npr_mcrib",
+          "stance": 0
+        },
+        {
+          "source_id": "cbs_mcrib",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Pig fat secretly added to milkshakes and ice cream",
+      "assessment": "unsubstantiated_urban_legend",
+      "explanation": "Rumor repeated with other McDonald's ingredient folklore; no substantiated proof gathered in this review",
+      "evidence": [
+        {
+          "source_id": "snopes_worms",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Fries potatoes currently use pesticide Monitor and must off-gas",
+      "assessment": "outdated_with_false_mechanism",
+      "explanation": "Methamidophos historically used on potatoes, deregistered US 2009; controlled storage maintains quality, not off-gassing",
+      "evidence": [
+        {
+          "source_id": "ff_monitor",
+          "stance": 0
+        },
+        {
+          "source_id": "lead_monitor",
+          "stance": 0
+        },
+        {
+          "source_id": "pf_monitor",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "title": "McNuggets still contain Silly Putty silicone chemicals",
+      "assessment": "outdated_with_real_ingredient",
+      "explanation": "Dimethylpolysiloxane historically used as an antifoamer; removed from US nugget ingredients in 2016, not equivalent to Silly Putty",
+      "evidence": [
+        {
+          "source_id": "pf_silicone",
+          "stance": 0
+        },
+        {
+          "source_id": "snopes_silicone",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "French fries are manufactured from petroleum chemicals",
+      "assessment": "imprecise_unsubstantiated",
+      "explanation": "Industrial uses of compounds cannot establish petrol in the food; current US fries use potatoes and cooking oil",
+      "evidence": [
+        {
+          "source_id": "mc_fries",
+          "stance": 0
+        },
+        {
+          "source_id": "pf_silicone",
+          "stance": 0
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Burgers cannot decompose due to secret preservatives",
+      "assessment": "false_mechanism_real_observation",
+      "explanation": "Dry-out limits microbial growth; homemade burgers can behave similarly under dry conditions",
+      "evidence": [
+        {
+          "source_id": "fortune_decay",
+          "stance": 0
+        },
+        {
+          "source_id": "mc_decay",
+          "stance": 0
+        }
+      ]
+    }
+  ]
+}
