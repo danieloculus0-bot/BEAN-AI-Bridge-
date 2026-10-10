@@ -226,12 +226,17 @@ class ConfidenceSearchAgent:
             })
         return sorted(rows, key=lambda row: (-row["ranking_score"], row["page_id"]))
 
-    def learn_from_outcome(self, verified_outcome: int):
-        """Only prior completed episodes inform future self calibration."""
+    def learn_from_outcome(self, verified_outcome: int, prior_probability: float):
+        """Calibrate against the claim prediction made *before* any audit.
+
+        Never score the oracle-corrected final answer as the model's own
+        prediction: that would create fabricated perfect self-confidence.
+        """
         if verified_outcome not in (0, 1):
             raise ValueError("outcome must be independently verified")
-        predicted = int(self.belief().predicted_probability >= 0.5)
-        self.self_correct[int(predicted != verified_outcome)] += 0  # explicit no-op; indexes below
+        if not math.isfinite(prior_probability) or not 0 <= prior_probability <= 1:
+            raise ValueError("invalid prior prediction")
+        predicted = int(prior_probability >= 0.5)
         if predicted == verified_outcome:
             self.self_correct[0] += 1
         else:
@@ -345,7 +350,7 @@ def evaluate(strategy: str, seeds: list[int], profiles: list[str]) -> dict:
         })
         # Ground truth feedback is revealed ONLY after ranking is complete.
         # This is an evaluator-supplied training signal for the *next* query.
-        agent.learn_from_outcome(truth)
+        agent.learn_from_outcome(truth, result["before_audit_probability"])
     n = len(records)
     return {
         "episodes": n,
