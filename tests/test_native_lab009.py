@@ -98,6 +98,8 @@ class TestNativeArchitecture(unittest.TestCase):
         self.assertTrue((output/"lab009-results.json").exists())
         self.assertEqual(result["runtime_mapping"]["version"],"fixture-only")
         self.assertEqual(len(result["search"]["proposals"]),8)
+        self.assertEqual(len(result["winner_holdout"]["results"]),10)
+        self.assertTrue(all(z["as_of_utc"].endswith("Z") for z in result["winner_holdout"]["results"]))
         self.assertTrue(all(z["classification"] if "classification" in z else True for z in [result]))
 
     def test_self_hosted_native_api_roundtrip(self):
