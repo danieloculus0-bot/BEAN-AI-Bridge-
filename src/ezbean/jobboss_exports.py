@@ -15,6 +15,7 @@ import sqlite3
 import time
 import zipfile
 from collections import Counter
+from decimal import Decimal, InvalidOperation
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -150,11 +151,14 @@ def _calendar_date(value,field):
 def _count(value,field,empty=0):
     value=str(value if value is not None else "").strip()
     if not value:return empty
+    if not re.fullmatch(r"(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)(?:\\.0+)?",value):
+        raise ValueError(f"{field} must be nonnegative whole units")
     try:
-        n=float(value)
-        if n<0 or not n.is_integer():raise ValueError()
+        n=Decimal(value.replace(",",""))
+        if not n.is_finite() or n<0 or n!=n.to_integral_value():
+            raise ValueError()
         return int(n)
-    except ValueError:
+    except (InvalidOperation,ValueError):
         raise ValueError(f"{field} must be nonnegative whole units") from None
 
 
@@ -273,13 +277,21 @@ class ExportSponge:
         active_schedule=schedule[0] if schedule else None
         active_rma=rma[0] if rma else None
         due=[]
+        due_date_lines=0
+        unverified_shipping_state=0
         for ref,row in self.records(active_schedule):
             due_date=_calendar_date(row.get("DueDate"),"DueDate")
-            if due_date is None:continue
+            if due_date is None or not due_date<end:continue
             ordered=_count(row.get("QtyOrdered"),"QtyOrdered")
-            shipped=_count(row.get("QtyShipped"),"QtyShipped")
-            if ordered>shipped and due_date<end:
-                due.append(ref)
+            if ordered<=0:continue
+            due_date_lines+=1
+            shipped_text=str(row.get("QtyShipped") or "").strip()
+            if not shipped_text:
+                # Missing QtyShipped is UNKNOWN, not zero, even if QtyOrdered exists.
+                unverified_shipping_state+=1
+                continue
+            shipped=_count(shipped_text,"QtyShipped")
+            if ordered>shipped:due.append(ref)
         # Shipments are accumulated across file snapshots. Identical shipment
         # identities in a newer export replace the previous view of that line.
         shipped={}
@@ -301,6 +313,27 @@ class ExportSponge:
                 shipment_rows.append((ref,row))
         shipped_on_time=[(ref,row) for ref,row in shipment_rows
             if _calendar_date(row.get("DateShipped"),"DateShipped") <= _calendar_date(row.get("DueDate"),"DueDate")]
+        verified_early_late=0
+        conflicting_early_late=0
+        missing_early_late=0
+        partially_shipped=0
+        for _,row in shipment_rows:
+            actual_days=(_calendar_date(row["DateShipped"],"DateShipped")-
+                         _calendar_date(row["DueDate"],"DueDate")).days
+            source_days=str(row.get("DaysEarlyLate") or "").strip()
+            if not source_days:
+                missing_early_late+=1
+            else:
+                try:
+                    reported=Decimal(source_days.replace(",",""))
+                    if reported.is_finite() and reported==actual_days:
+                        verified_early_late+=1
+                    else:
+                        conflicting_early_late+=1
+                except InvalidOperation:
+                    conflicting_early_late+=1
+            if row.get("QtyOrdered","").strip() and _count(row["QtyShipped"],"QtyShipped") < _count(row["QtyOrdered"],"QtyOrdered"):
+                partially_shipped+=1
         rmas=[]
         for ref,row in self.records(active_rma):
             rma_date=_calendar_date(row.get("Date"),"Date")
@@ -323,12 +356,22 @@ class ExportSponge:
               "otd_percent_by_shipment_line":otd,
               "shipment_lines":len(shipment_rows) if shipment else None,
               "on_time_shipment_lines":len(shipped_on_time) if shipment else None,
-              "past_due_open_job_lines":len(due) if schedule else None,
+              "partially_shipped_lines":partially_shipped if shipment else None,
+              "past_due_open_job_lines":(len(due) if schedule and not unverified_shipping_state else None),
+              "schedule_due_date_lines":due_date_lines if schedule else None,
+              "schedule_missing_shipped_quantity_lines":unverified_shipping_state if schedule else None,
               "rma_entries":len(rmas) if rma else None,
               "rma_missing_reason_entries":sum(not row.get("Reason Code") for _,row in rmas) if rma else None,
               "rma_quantity":None,
               "rma_cost_usd":None},
           "rma_reason_counts":reason_counts if rma else None,
+          "source_verification":{"shipment_days_early_late":{
+              "status":("not_available" if not shipment_rows else
+                        "conflicted" if conflicting_early_late else
+                        "verified" if verified_early_late==len(shipment_rows) else "unknown"),
+              "reconciled_lines":verified_early_late,
+              "unavailable_lines":missing_early_late,
+              "conflicting_lines":conflicting_early_late}},
           "quarantined_rma_rows":quarantined,
           "evidence":{
               "shipment_row_refs":[ref for ref,_ in shipment_rows],
@@ -338,6 +381,7 @@ class ExportSponge:
               "OTD denominator is shipped report lines, not complete jobs or orders.",
               "Shipment exports are merged by packing list, job, date, order and description; source coverage must be verified.",
               "Job Schedule is a captured snapshot; only the latest available schedule is used.",
+              "Missing job shipped quantity makes open/past-due status N/A, not zero.",
               "RMA Tracker records incidents but does not include reliable quantity or dollar columns.",
               "Malformed RMA dates are quarantined and excluded, with row-level audit evidence.",
               "A missing export is unknown (null), not a zero count.",
