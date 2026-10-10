@@ -39,24 +39,27 @@ def evaluate(path:Path):
     check(not ({z["requested_concept"] for z in withhold} & train_keys),"Heldout concept keys absent from training")
     checked=set()
     for z in withhold:
-        key=(z.get("requested_concept"),z.get("as_of") or z.get("as_of_utc"))
-        # The optimizer query results provide requested_concept but do not
-        # duplicate the time in the low-level gate record. Need reconstruct
-        # holdout order from the declared static curriculum.
-        checked.add(z.get("requested_concept"))
+        key=(z.get("requested_concept"),z.get("as_of_utc"))
+        check(key in HOLDOUT,"Known heldout query and timestamp: "+str(key))
+        if key not in HOLDOUT:
+            continue
+        check(key not in checked,"No duplicate heldout query: "+str(key))
+        checked.add(key)
         check(z.get("accepted") is True,"Winner accepted: "+str(key[0]))
         check(z.get("output") is not None,"No hidden rejection in winner: "+str(key[0]))
-    # A missing fact may be emitted as explicit absence; never claim it has evidence.
+    check(checked == set(HOLDOUT),"All distinct independent holdout cases covered")
     for z in withhold:
-        concept=z.get("requested_concept")
-        if concept in {"holdout_unknown","holdout_provisional"}:
+        key=(z.get("requested_concept"),z.get("as_of_utc"))
+        if key not in HOLDOUT: continue
+        expected_value,expected_ref=HOLDOUT[key]
+        if expected_value is None:
             check(z.get("reason")=="accepted_abstention" and
-                  z.get("definition_id") is None,
-                  "Unknown/retracted/provisional abstains: "+str(concept))
+                  z.get("definition_id") is None and
+                  z.get("output") == "No verified current definition available for "+key[0]+".",
+                  "Missing definition abstains: "+str(key))
         else:
-            options={(v,id) for (k,t),(v,id) in HOLDOUT.items() if k==concept}
-            check((z.get("output"),z.get("definition_id")) in options,
-                  "Canonical holdout answer belongs to independent oracle: "+str(concept))
+            check((z.get("output"),z.get("definition_id")) == (expected_value,expected_ref),
+                  "Correct time-versioned answer from independent oracle: "+str(key))
     check(report["winner_holdout"]["accepted"]>=report["reference_holdout"]["accepted"],
           "No reference accuracy regression")
     check(report["winner_holdout"]["backend_model_calls"]<=report["reference_holdout"]["backend_model_calls"],
