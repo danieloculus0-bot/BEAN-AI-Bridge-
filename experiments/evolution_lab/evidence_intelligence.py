@@ -18,12 +18,12 @@ from pathlib import Path
 
 from bean.cognition.attention import AttentionFilter
 
-from experiments.evolution_lab.bridge_evolution import RULE_COMPARATOR, evaluate, generate_case
+from experiments.evolution_lab.bridge_evolution import RULE_COMPARATOR, SimulatedAgent, generate_case
 
 
-PROFILES = ("standard", "correlated_noise", "delayed_sensors", "drifting_a", "stuck_b")
+PROFILES = ("standard", "correlated_noise", "delayed_sensors", "drifting_a", "stuck_b", "late_shift", "early_shift")
 TRAIN_PROFILES = ("standard", "correlated_noise", "delayed_sensors")
-ADVERSARIAL_PROFILES = ("drifting_a", "stuck_b")
+ADVERSARIAL_PROFILES = ("drifting_a", "stuck_b", "late_shift", "early_shift")
 
 
 @dataclass(frozen=True)
@@ -34,6 +34,7 @@ class EvidencePolicy:
     min_persistence: int = 1
     reliability_decay: float = 0.95
     independent_check_period: int = 0
+    learn_sensor_reliability: bool = True
 
 
 class EvidenceAgent:
@@ -76,6 +77,8 @@ class EvidenceAgent:
         }
 
     def source_accuracy(self, name: str) -> float:
+        if not self.policy.learn_sensor_reliability:
+            return 2.0 / 3.0
         good, bad = self.reliability[name]
         return max(0.06, min(0.94, good / (good + bad)))
 
@@ -205,13 +208,59 @@ def case_for(seed: int, profile: str) -> dict:
     # Reuse identical ground truth to make fixed-policy comparisons fair.
     case = generate_case(seed)
     timeline = []
+    altered_change_at = case["change_at"]
+    if case["changed"] and profile == "late_shift":
+        altered_change_at = [8, 9, 10][seed % 3]
+    if case["changed"] and profile == "early_shift":
+        altered_change_at = [1, 2][seed % 2]
     for step, (a, b, truth) in enumerate(case["timeline"]):
+        if profile in ("late_shift", "early_shift"):
+            new_truth = int(case["changed"] and step >= altered_change_at)
+            a, b, truth = a ^ truth ^ new_truth, b ^ truth ^ new_truth, new_truth
         if profile == "drifting_a" and step >= 4:
             a = 1 - truth  # channel A becomes systematically inverted
         if profile == "stuck_b" and step >= 4:
             b = 0  # channel B becomes stuck low
         timeline.append((a, b, truth))
-    return {**case, "timeline": timeline}
+    return {**case, "change_at": altered_change_at, "timeline": timeline}
+
+
+def evaluate_previous(seeds: list[int], profile: str) -> dict:
+    """The exact Lab 002 controller on the same new ground-truth traces."""
+    score = 0.0
+    hits = changes = false_probes = probes = delay = saved = 0
+    for seed in seeds:
+        case = case_for(seed, profile)
+        agent = SimulatedAgent(RULE_COMPARATOR)
+        for step, (a, b, truth) in enumerate(case["timeline"]):
+            agent.observe(step, a, b, verify=lambda x=truth: x)
+            if step == 6:
+                snapshot = agent.snapshot()
+                agent = SimulatedAgent(RULE_COMPARATOR, saved_state=snapshot)
+                saved += int(agent.snapshot() == snapshot)
+        success = case["changed"] and agent.belief == 1 and agent.detected_at is not None
+        if case["changed"]:
+            changes += 1
+            if success:
+                hits += 1
+                lag = max(0, agent.detected_at - case["change_at"])
+                delay += lag
+                score += 4.0 - 0.2 * lag
+            else:
+                score -= 2.0
+        else:
+            score += 3.0 if agent.belief == 0 else -3.0
+        score -= 0.17 * agent.probes + 0.45 * agent.false_probes
+        probes += agent.probes
+        false_probes += agent.false_probes
+    n = len(seeds)
+    return {"episodes": n, "actual_changes": changes,
+            "change_recall": round(hits / changes, 4) if changes else None,
+            "mean_score": round(score / n, 4),
+            "mean_probes": round(probes / n, 4),
+            "mean_false_probes": round(false_probes / n, 4),
+            "mean_delay": round(delay / hits, 4) if hits else None,
+            "restart_state_retained": saved}
 
 
 def evaluate_evidence(policy: EvidencePolicy, seeds: list[int], profile: str) -> dict:
@@ -302,10 +351,15 @@ def study() -> dict:
         "training_top_five": table[:5],
         "results": {
             profile: {
-                "fixed_002": evaluate(RULE_COMPARATOR, holdout, profile)
-                if profile in TRAIN_PROFILES else None,
+                "fixed_002": evaluate_previous(holdout, profile),
                 "evidence_003": evaluate_evidence(selected, holdout, profile),
                 "default_003": evaluate_evidence(EvidencePolicy(), holdout, profile),
+                "no_sensor_learning": evaluate_evidence(
+                    replace(selected, learn_sensor_reliability=False), holdout, profile
+                ),
+                "no_scheduled_verification": evaluate_evidence(
+                    replace(selected, independent_check_period=0), holdout, profile
+                ),
             }
             for profile in PROFILES
         },
