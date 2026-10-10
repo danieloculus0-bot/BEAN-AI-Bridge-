@@ -156,6 +156,7 @@ class Gateway:
         result["blueprint"]=blueprint.name()
         # Include query, never raw model prose as an approved final result.
         result["requested_concept"]=concept
+        result["as_of_utc"]=snap["as_of_utc"]
         return result
 
 
