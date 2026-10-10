@@ -19,6 +19,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from bean.cognition.attention import AttentionFilter
+from experiments.search_lab.epistemic_continuity import EpistemicContinuity
 
 STREAMS = ("viral", "primary", "independent", "challenger", "archive")
 PROFILES = ("ordinary", "viral_misinformation", "stale_archive")
@@ -61,9 +62,16 @@ class ConfidenceSearchAgent:
         self.policy = policy
         self.stream_correct = {s: [2.0, 2.0] for s in STREAMS}
         self.self_correct = [2.0, 2.0]
+        self.continuity = EpistemicContinuity()
+        self.episode = 0
         self.reset()
 
     def reset(self):
+        self.episode += 1
+        self.claim_id = f"claim:search:{self.episode}"
+        self.decision_id = f"decision:search:{self.episode}"
+        self.continuity.observe(id=self.decision_id, layer="decision",
+                                origin="search_policy", value=0.0, uncertainty=0.5)
         self.pages: list[Page] = []
         self.seen_ids: set[str] = set()
         self.verified_truth: int | None = None
@@ -157,6 +165,13 @@ class ConfidenceSearchAgent:
         if not all(math.isfinite(x) and 0 <= x <= 1 for x in
                    (page.relevance, page.methodology, page.freshness)):
             raise ValueError("invalid page features")
+        node_id = f"{self.claim_id}:page:{page.page_id}"
+        self.continuity.observe(id=node_id, layer="claim", origin=page.origin,
+                                value=float(page.stance),
+                                uncertainty=1.0 - self._page_strength(page),
+                                note="Unverified search claim, permanently preserved")
+        self.continuity.connect(node_id, self.decision_id, page.relevance,
+                                "Observed topical relevance, not verified truth")
         self.seen_ids.add(page.page_id)
         self.pages.append(page)
         self.selected_streams.append(page.stream)
@@ -241,6 +256,19 @@ class ConfidenceSearchAgent:
             self.self_correct[0] += 1
         else:
             self.self_correct[1] += 1
+        for page in self.pages:
+            self.continuity.add_claim_evidence(
+                self.claim_id, f"{self.claim_id}:page:{page.page_id}",
+                supports=bool(page.stance), independently_verified=False)
+        verified_id = f"{self.claim_id}:verification"
+        self.continuity.observe(id=verified_id, layer="claim",
+                                origin=f"synthetic_verifier:{self.episode}",
+                                value=float(verified_outcome), uncertainty=0.01)
+        self.continuity.connect(verified_id, self.decision_id, 1.0,
+                                "Independent evaluator feedback after search")
+        self.continuity.add_claim_evidence(
+            self.claim_id, verified_id, supports=bool(verified_outcome),
+            independently_verified=True)
         # Every family gets at most one score per episode, even if it produced
         # dozens of near-identical copies of the same misinformation.
         seen_streams = {}
@@ -326,6 +354,7 @@ def search_episode(agent: ConfidenceSearchAgent, world: dict, strategy: str) -> 
         "search_streams": list(agent.selected_streams),
         "ranked_pages": ranked,
         "decision_trace": agent.trace,
+        "epistemic_status": agent.continuity.describe(agent.claim_id, agent.decision_id),
     }
 
 
