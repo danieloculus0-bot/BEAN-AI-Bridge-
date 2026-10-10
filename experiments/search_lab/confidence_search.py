@@ -170,13 +170,6 @@ class ConfidenceSearchAgent:
         if not all(math.isfinite(x) and 0 <= x <= 1 for x in
                    (page.relevance, page.methodology, page.freshness)):
             raise ValueError("invalid page features")
-        node_id = f"{self.claim_id}:page:{page.page_id}"
-        self.continuity.observe(id=node_id, layer="claim", origin=page.origin,
-                                value=float(page.stance),
-                                uncertainty=1.0 - self._page_strength(page),
-                                note="Unverified search claim, permanently preserved")
-        self.continuity.connect(node_id, self.decision_id, page.relevance,
-                                "Observed topical relevance, not verified truth")
         if page.physical_deviation is not None:
             if (not math.isfinite(page.physical_deviation)
                 or not math.isfinite(page.physical_uncertainty)
@@ -186,6 +179,13 @@ class ConfidenceSearchAgent:
                 raise ValueError("invalid physical trace")
             if page.physical_link_strength and not page.physical_link_basis.strip():
                 raise ValueError("physical relevance needs a grounded rationale")
+        node_id = f"{self.claim_id}:page:{page.page_id}"
+        self.continuity.observe(id=node_id, layer="claim", origin=page.origin,
+                                value=float(page.stance),
+                                uncertainty=1.0 - self._page_strength(page),
+                                note="Unverified search claim, permanently preserved")
+        self.continuity.connect(node_id, self.decision_id, page.relevance,
+                                "Observed topical relevance, not verified truth")
             measurement = f"{node_id}:measurement"
             physical = f"{node_id}:physical"
             self.continuity.observe(id=measurement, layer="measurement",
