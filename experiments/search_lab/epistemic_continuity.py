@@ -160,13 +160,34 @@ class EpistemicContinuity:
 
     def describe(self, claim: str, decision: str) -> dict:
         model = self.belief(claim)
+        if decision not in self.nodes:
+            raise ValueError("unknown decision")
+        # A single backwards pass through the four-layer acyclic graph keeps
+        # repeated search episodes cheap even when the complete evidence
+        # ledger grows. Irrelevant nodes remain recorded, not discarded.
+        relevance = {decision: 1.0}
+        for layer in reversed(LAYERS):
+            for edge in self.edges:
+                if self.nodes[edge.parent].layer != layer:
+                    continue
+                if edge.parent in relevance:
+                    relevance[edge.child] = max(
+                        relevance.get(edge.child, 0.0),
+                        relevance[edge.parent] * edge.relevance,
+                    )
+        uncertainty = max(FLOOR, 2 * min(model.confidence, 1 - model.confidence))
+        visible = [
+            {"id": node.id, "layer": node.layer,
+             "priority": round(relevance[node.id] * (0.05 + 0.95 * uncertainty) *
+                               (0.6 + 0.4 * node.uncertainty), 9)}
+            for node in self.nodes.values() if relevance.get(node.id, 0.0) > 0
+        ]
         return {
             "claim": claim, "confidence_positive": model.confidence,
             "temporarily_settled": model.settled_for_now is not None,
             "reopen_count": model.reopen_count, "observations_stored": len(self.nodes),
             "independent_verifications": model.verified_count,
             "learning_status": "always_open",
-            "abstractions": [{"id": node.id, "layer": node.layer,
-                              "priority": self.priority(node.id, decision, claim)}
-                             for node in self.nodes.values()],
+            "unlinked_or_other_context_observations": len(self.nodes) - len(visible),
+            "abstractions": visible,
         }
