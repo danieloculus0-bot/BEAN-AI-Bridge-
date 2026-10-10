@@ -19,7 +19,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from bean.cognition.attention import AttentionFilter
-from experiments.search_lab.epistemic_continuity import EpistemicContinuity
+from experiments.search_lab.epistemic_continuity import EpistemicContinuity, empirical
 
 STREAMS = ("viral", "primary", "independent", "challenger", "archive")
 PROFILES = ("ordinary", "viral_misinformation", "stale_archive")
@@ -86,11 +86,11 @@ class ConfidenceSearchAgent:
 
     def own_confidence(self) -> float:
         good, wrong = self.self_correct
-        return round(good / (good + wrong), 6)
+        return round(empirical(good / (good + wrong)), 6)
 
     def stream_confidence(self, stream: str) -> float:
         good, wrong = self.stream_correct[stream]
-        return good / (good + wrong)
+        return empirical(good / (good + wrong))
 
     @staticmethod
     def _page_strength(page: Page) -> float:
