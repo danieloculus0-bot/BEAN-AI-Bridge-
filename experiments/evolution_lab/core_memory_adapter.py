@@ -104,4 +104,7 @@ def replay_verified_case(*, evidence: list[dict], hypotheses: dict, db_path: str
         "source": "BEAN core real SQLite and cognition",
     }
     end_session(session_uuid, reason="clean", notes="Synthetic laboratory replay")
+    # SQLite file handles remain open on Windows until explicitly closed.
+    # Release the isolated test database before the caller cleans its temp dir.
+    get_store().close()
     return summary
