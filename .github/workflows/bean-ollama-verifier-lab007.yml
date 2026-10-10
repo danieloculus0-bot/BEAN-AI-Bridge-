@@ -119,6 +119,11 @@ jobs:
         run: |
           export PYTHONPATH="$GITHUB_WORKSPACE/bridge/src:$GITHUB_WORKSPACE/bean-core:$GITHUB_WORKSPACE/bridge"
           .venv/bin/python -m experiments.mcdonalds_lab.ollama_verifier --model qwen2.5:1.5b --limit 20 --timeout 140 --out lab007-live-ollama.json
+      - name: Run counterbalanced positive negative unknown controls with real Ollama
+        working-directory: bridge
+        run: |
+          export PYTHONPATH="$GITHUB_WORKSPACE/bridge/src:$GITHUB_WORKSPACE/bean-core:$GITHUB_WORKSPACE/bridge"
+          .venv/bin/python -m experiments.mcdonalds_lab.ollama_controls --model qwen2.5:1.5b --out lab007b-controls.json
       - name: Archive model output and service details
         if: always()
         run: cp /tmp/bean-ollama-server.log bridge/lab007-ollama-server.log 2>/dev/null || true
@@ -128,5 +133,6 @@ jobs:
           name: bean-ollama-live-lab007
           path: |
             bridge/lab007-live-ollama.json
+            bridge/lab007b-controls.json
             bridge/lab007-ollama-server.log
           if-no-files-found: ignore
