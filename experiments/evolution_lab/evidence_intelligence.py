@@ -130,7 +130,7 @@ class EvidenceAgent:
                 "shared_fault",
                 "Both sensors may share a failure mode or common bias",
                 step, f"verify:{step}:both",
-                "Independent checks consistently confirm simultaneous agreement",
+                "Later independent checks establish both sensors are correct under matching conditions",
             )
 
     def observe(self, step: int, readings: dict[str, int], verify) -> dict:
@@ -161,13 +161,15 @@ class EvidenceAgent:
             elif suspicious and self._streak >= self.policy.min_persistence:
                 event = {
                     "id": step, "event_type": "observation",
-                    "severity": "warn" if candidate_change else "info",
+                    "severity": "warn",
                     "summary": "Unresolved sensor discrepancy requiring evidence check",
                     "subtype": "evidence_conflict",
                 }
                 attention = AttentionFilter(threshold=self.policy.attention_threshold).build_window(
                     [event],
-                    open_questions=[{"question": "Investigate sensor discrepancy"}] if self.hypotheses else [],
+                    # An unexplained discrepancy can itself open an investigation.
+                    # Do not require a previously verified hypothesis to act.
+                    open_questions=[{"question": "Investigate sensor discrepancy"}],
                 )
                 if attention.event_ids() and (
                     candidate_change and confidence >= self.policy.probe_confidence or disagreement
