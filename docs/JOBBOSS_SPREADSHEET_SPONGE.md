@@ -66,3 +66,21 @@ Imports and derived outputs are separate from any source-of-truth JobBOSS applic
 - `AIscend`: autonomous trading experiment (outside manufacturing/ERP scope).
 
 This is a **shared bridge output contract**, not a parallel replacement for SuperForge or Axiom.
+
+## Private executive intelligence (optional, no email)
+
+The bridge contains a deterministic, auditable **BEAN management intelligence** layer for an optional site-to-site comparison. It never guesses that a source-export site is better. Only **the same metric, exact same reporting dates, and fully reconciled field logic** can be compared. If peer records are not supplied, the peer stays **N/A**, no difference/winner is calculated. The system exposes unresolved data gaps and can mark a missing/contradictory value as **CORRECTED** when new evidence supports it, without rewriting the old snapshot.
+
+The **Job Schedule shipped-quantity column is sometimes blank in real exports**. In that case, past-due *open-job* counts are no longer asserted; an independent count of past due-date schedule lines is retained and the open classification stays unknown. Shipment quantities such as \`1,250\` are normalized exactly (no floating-point approximation), and JobBOSS's own \`DaysEarlyLate\` is checked against shipped minus due day for each line. This establishes fidelity to the **shipment-line** date calculation but does not imply agreement with every official OTD business policy.
+
+From the repository root, with site-specific ledgers already imported locally:
+
+\`\`\`powershell
+$env:PYTHONPATH = "src"
+python -m ezbean.management_intelligence --primary-db .\site_data\primary.sqlite --primary-site SITE_A --start 2026-09-01 --as-of 2026-10-01T18:00:00Z --output .\site_data\private_management.html
+\`\`\`
+
+Add \`--peer-db .\site_data\peer.sqlite --peer-site SITE_B\` only after obtaining an equally structured and validated peer dataset. The offline HTML and companion JSON contain **only aggregate numbers, evidence-state labels, and gap prompts**. Raw IDs, customer names, defect descriptions, and source paths stay in the site's private ledger; the report intentionally strips them. The optional \`--note-file\` argument can insert a private human-authored management message (escaped as plain text). **The tool never sends mail or posts data to a network.** Keep the generated HTML and JSON outside a public repository and review them before forwarding.
+
+This is the BEAN Bridge's **rules-based reasoning stage**, not a claim that neural BEAN Core or Ollama independently validated facts. Future BEAN Core integration must retain deterministic KPI math and evidence gates.
+
