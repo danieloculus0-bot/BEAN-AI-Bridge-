@@ -1,0 +1,89 @@
+name: BEAN Native LAB009 architecture self-optimization
+
+on:
+  push:
+    branches:
+      - experiment/bean-native-inference-lab009-20261010
+    paths:
+      - 'experiments/native_engine/**'
+      - 'tests/test_native_lab009.py'
+      - '.github/workflows/bean-native-lab009.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    name: BEAN Native synthetic bridge and HTTP smoke
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile all code
+        run: python -m compileall -q src tests experiments/native_engine
+      - name: Bridge and native regression
+        run: python -m unittest discover -s tests -v
+      - name: Replay complete topology search with fixture
+        run: python -m unittest discover -s tests -p test_native_lab009.py -v
+
+  autonomous-lab:
+    name: Actual BEAN Core governor and real Ollama reference model
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: 'src:.'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: bridge
+      - uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: main
+          path: bean-core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install BEAN Core runtime test packages
+        run: python -m pip install psutil
+      - name: Install local Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh -o /tmp/ollama-install.sh
+          sh /tmp/ollama-install.sh
+          ollama --version
+      - name: Start actual local reference model
+        run: |
+          nohup ollama serve >/tmp/bean-native-ollama.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5:0.5b
+          curl -fsS http://127.0.0.1:11434/api/version
+      - name: BEAN maps capabilities and mutates candidate inference architectures
+        working-directory: bridge
+        run: |
+          export PYTHONPATH="$GITHUB_WORKSPACE/bridge/src:$GITHUB_WORKSPACE/bridge"
+          python -m experiments.native_engine.native_lab --model qwen2.5:0.5b --seed 106 --iterations 10 --output-dir lab009-results --bean-core ../bean-core
+      - name: Preserve backend service log
+        if: always()
+        run: cp /tmp/bean-native-ollama.log bridge/lab009-results/ollama-server.log 2>/dev/null || true
+      - name: Archive all candidates, scores, blind holdout, governor proposal and capability map
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-native-lab009-measured-evidence
+          path: bridge/lab009-results/
+          if-no-files-found: warn
