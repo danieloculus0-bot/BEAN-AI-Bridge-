@@ -40,7 +40,10 @@ def serve(library:DefinitionLibrary,blueprint=Blueprint(True,False,False,False),
           host="127.0.0.1",port=11435,provider=None):
     if host not in {"127.0.0.1","localhost","::1"}:
         raise ValueError("BEAN Native prototype is loopback only")
-    gateway=Gateway(library,provider or Provider())
+    db_record=library.db.execute("PRAGMA database_list").fetchone()
+    db_path=db_record["file"] if db_record else ""
+    if not db_path:
+        raise ValueError("HTTP gateway requires a file-backed definition library")
     class Handler(BaseHTTPRequestHandler):
         def send_json(self,code,payload):
             raw=json.dumps(payload,ensure_ascii=False).encode("utf-8")
@@ -66,7 +69,13 @@ def serve(library:DefinitionLibrary,blueprint=Blueprint(True,False,False,False),
                 payload=json.loads(self.rfile.read(length))
                 concept,at=prepare_request(payload)
                 start=time.perf_counter_ns()
-                outcome=gateway.run(blueprint,concept,at)
+                # Own SQLite connection per HTTP request; do not share the
+                # creator thread's SQLite connection with worker threads.
+                request_library=DefinitionLibrary(db_path)
+                try:
+                    outcome=Gateway(request_library,provider or Provider()).run(blueprint,concept,at)
+                finally:
+                    request_library.close()
                 # Preserve the same shape for accepted answers and failed gates;
                 # rejected outputs are omitted, never replaced with model prose.
                 result={"model":MODEL,
