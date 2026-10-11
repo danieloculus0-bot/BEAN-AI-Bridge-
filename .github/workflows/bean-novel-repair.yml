@@ -1,0 +1,161 @@
+name: BEAN novel engineering repair laboratory
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 14 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/bean_novel_repair.py'
+      - '.github/workflows/bean-novel-repair.yml'
+
+concurrency:
+  group: bean-novel-repair-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    name: BEAN drafts unknown repair (model source is never executed here)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      models: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN-AI-Bridge-
+          ref: 75b12233c243b61c61b2f9b205951cb8ae45f4b7
+          path: _challenge
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reproduce real failing witness and ask GitHub Models
+        env:
+          BEAN_MODELS_TOKEN: ${{ github.token }}
+        run: python tools/bean_novel_repair.py generate --receipt .bean-peer/generate-receipt.json
+      - name: Preserve baseline and model-attempt evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-novel-draft-${{ github.run_id }}
+          path: |
+            .bean-peer/candidate.json
+            .bean-peer/generate-receipt.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  verify:
+    name: Independent new-source and original-oracle checks (${{ matrix.os }})
+    needs: draft
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN-AI-Bridge-
+          ref: 75b12233c243b61c61b2f9b205951cb8ae45f4b7
+          path: _challenge
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: bean-novel-draft-${{ github.run_id }}
+          path: .bean-peer
+      - name: Rerun clean baseline then full test suite against model source
+        run: python tools/bean_novel_repair.py validate --receipt .bean-peer/verify-receipt.json
+      - name: Preserve independent acceptance or failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-novel-verified-${{ matrix.os }}-${{ github.run_id }}
+          path: |
+            .bean-peer/verify-receipt.json
+            .bean-peer/validated/src/ezbean/core.py
+          if-no-files-found: warn
+          retention-days: 14
+
+  propose:
+    name: Publish passing source to an isolated PR (never main)
+    needs: [draft, verify]
+    if: needs.draft.result == 'success' && needs.verify.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: bean-novel-draft-${{ github.run_id }}
+          path: .bean-peer/draft
+      - uses: actions/download-artifact@v4
+        with:
+          name: bean-novel-verified-ubuntu-latest-${{ github.run_id }}
+          path: .bean-peer/verified
+      - uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN-AI-Bridge-
+          ref: 75b12233c243b61c61b2f9b205951cb8ae45f4b7
+          path: _challenge
+          persist-credentials: false
+      - name: Check receipts then publish exact approved file and sealed oracle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, pathlib, subprocess
+          cand = json.loads(pathlib.Path('.bean-peer/draft/candidate.json').read_text())
+          report = json.loads(pathlib.Path('.bean-peer/verified/verify-receipt.json').read_text())
+          generated = pathlib.Path('.bean-peer/verified/validated/src/ezbean/core.py')
+          original = pathlib.Path('src/ezbean/core.py')
+          sealed = pathlib.Path('_challenge/tests/test_peer_midnight_cutoff_challenge.py')
+          h = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+          assert report['result'] == 'validated_on_one_platform' and report['suite_passed'] is True
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == cand['base_commit']
+          assert cand['replacement_sha256'] == report['validated_source_sha256'] == h(generated)
+          assert cand['source_sha256'] == h(original)
+          assert cand['oracle_sha256'] == h(sealed)
+          PY
+          if gh pr list --state open --json headRefName --jq '.[].headRefName' \
+                | grep -q '^bean/novel-repair-'; then
+            echo 'Previously generated repair awaits review, no duplicate.'
+            exit 0
+          fi
+          cp .bean-peer/verified/validated/src/ezbean/core.py src/ezbean/core.py
+          cp _challenge/tests/test_peer_midnight_cutoff_challenge.py tests/test_peer_midnight_cutoff_challenge.py
+          BRANCH="bean/novel-repair-$GITHUB_RUN_ID"
+          git config user.name 'bean-novel-repair'
+          git config user.email 'bean-novel-repair@users.noreply.github.com'
+          git switch -c "$BRANCH"
+          git add -- src/ezbean/core.py tests/test_peer_midnight_cutoff_challenge.py
+          git diff --cached --quiet && { echo 'No source repair'; exit 1; }
+          gh auth setup-git
+          git commit -m 'fix(bridge): model-proposed midnight cutoff parity (externally validated)'
+          git push origin "HEAD:refs/heads/$BRANCH"
+          if ! gh pr create --base main --head "$BRANCH" \
+             --title 'BEAN novel repair: midnight RMA parity' \
+             --body "A real model proposed this source change; independent Linux/Windows jobs tested the exact bytes against all existing tests and the external pinned Midnight RMA oracle. Evidence: Actions run $GITHUB_RUN_ID. Independent human review is REQUIRED before merge; business reporting timezone is not approved by synthetic tests."; then
+            echo "PR creation blocked; review pushed branch https://github.com/$GITHUB_REPOSITORY/pull/new/$BRANCH" >> "$GITHUB_STEP_SUMMARY"
+          fi
