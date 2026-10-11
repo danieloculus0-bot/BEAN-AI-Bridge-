@@ -144,10 +144,32 @@ class RecoveryLearner(AdaptiveLearner):
         self.cooldown_until = self.world_index + c.cooldown
 
     def export_state(self) -> dict:
-        snapshot = super().export_state()
-        # Keep the inherited checkable state; do not claim the controls are
-        # persisted by this experimental serialization contract.
-        return snapshot
+        """Store complete recovery controls alongside the inherited evidence chain."""
+        base = super().export_state()
+        data = {"schema": "bean.lab014.state.v1",
+                "recovery_controls": asdict(self.recovery_controls),
+                "learner": base}
+        return {**data, "sha256": _fingerprint(data)}
+
+    @classmethod
+    def restore_state(cls, state: dict) -> "RecoveryLearner":
+        if not isinstance(state, dict) or state.get("schema") != "bean.lab014.state.v1":
+            raise ValueError("invalid Lab014 state")
+        unsigned = {k: v for k, v in state.items() if k != "sha256"}
+        if state.get("sha256") != _fingerprint(unsigned):
+            raise ValueError("Lab014 state checksum mismatch")
+        try:
+            controls = RecoveryControls(**state["recovery_controls"])
+            original = AdaptiveLearner.restore_state(state["learner"])
+            if original.parameters != FROZEN_CONTROLS:
+                raise ValueError("mismatched audit contract")
+            restored = cls(original.catalogue, controls)
+            for attr in ("current", "history", "transitions", "previous", "pending",
+                         "pending_count", "cooldown_until", "world_index", "retired"):
+                setattr(restored, attr, getattr(original, attr))
+            return restored
+        except (KeyError, TypeError, AttributeError, ValueError) as exc:
+            raise ValueError("invalid Lab014 recovery payload") from exc
 
 
 def episodes(domain: str, *, training: bool, pattern: str) -> list[tuple[str, int, bool]]:
