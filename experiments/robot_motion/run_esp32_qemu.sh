@@ -12,5 +12,7 @@ set -e
 tail -n 120 build/esp32/qemu.log
 if [[ "$status" != 0 && "$status" != 124 ]]; then echo "ESP32 compile/QEMU exited unexpectedly: $status" >&2; exit 1; fi
 grep -Fq 'ESP32_MOTION_PASS' build/esp32/qemu.log
+grep -Fq 'ESP32_FREERTOS_WATCHDOG_PASS' build/esp32/qemu.log
 if grep -Fq 'ESP32_MOTION_FAIL' build/esp32/qemu.log; then exit 1; fi
+if grep -Fq 'ESP32_FREERTOS_WATCHDOG_FAIL' build/esp32/qemu.log; then exit 1; fi
 echo 'ESP32_QEMU_CPU_EMULATION_PASS'
