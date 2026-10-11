@@ -2,6 +2,8 @@ name: BEAN Lab 014 recovery and source repair
 on:
   push:
     branches: [experiment/bean-recovery-guard-lab014-20261010]
+  pull_request:
+    branches: [experiment/bean-broad-improvement-lab012-20261010]
   workflow_dispatch:
 
 jobs:
