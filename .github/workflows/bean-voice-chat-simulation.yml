@@ -1,0 +1,79 @@
+name: BEAN Bridge conversational simulation lab
+
+on:
+  push:
+    branches:
+      - experiment/bean-conversation-simulation-20261011
+    paths:
+      - 'experiments/voice_chat_lab/**'
+      - '.github/workflows/bean-voice-chat-simulation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conversational-contracts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: fa68d70a8108e4342dcb5972fb933d20ec3c370c
+          path: _bean_core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile interface and simulation
+        run: python -m compileall -q _bean_core/bean/voice experiments/voice_chat_lab
+      - name: Run deterministic chat contract simulations
+        env:
+          PYTHONPATH: _bean_core
+        run: python experiments/voice_chat_lab/simulate.py --mode contracts
+
+  actual-ollama-conversations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: fa68d70a8108e4342dcb5972fb933d20ec3c370c
+          path: _bean_core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install disposable local Ollama on the Bridge runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -fsSL https://ollama.com/install.sh -o /tmp/ollama-install.sh
+          bash /tmp/ollama-install.sh
+          (OLLAMA_HOST=127.0.0.1:11434 ollama serve > /tmp/ollama.log 2>&1 &)
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:1.5b
+      - name: Capture actual Qwen 1.5B multi-turn chat responses
+        env:
+          PYTHONPATH: _bean_core
+        run: python experiments/voice_chat_lab/simulate.py --mode live --repeat 1 --output voice-chat-lab-results.json
+      - name: Retain raw transcripts for engineering review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-voice-chat-simulation
+          path: voice-chat-lab-results.json
+          if-no-files-found: warn
+          retention-days: 30
