@@ -1,0 +1,30 @@
+name: BEAN deterministic knowledge gate regression
+on:
+  push:
+    branches: [main, promote/definition-output-gate-20261010]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  knowledge-contract:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile and execute deterministic gate tests
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m compileall -q src experiments/knowledge_lab tests
+          python -m unittest discover -s tests -p test_knowledge_gate_lab008.py -v
+          python -m unittest discover -s tests -v
