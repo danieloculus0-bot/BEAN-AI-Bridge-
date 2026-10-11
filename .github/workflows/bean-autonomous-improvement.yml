@@ -31,12 +31,11 @@ jobs:
     timeout-minutes: 15
     env:
       PYTHONPATH: src:_bean_core
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout Bridge working tree
         uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          persist-credentials: false
       - name: Checkout BEAN main as the decision authority
         uses: actions/checkout@v4
         with:
@@ -65,6 +64,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Enable a GitHub credential helper only after all candidate code
+          # and regression runs have completed. Testing sees no write token.
+          gh auth setup-git
           BRANCH="bean/autonomous-bridge-$GITHUB_RUN_ID"
           git config user.name "bean-bridge-agent"
           git config user.email "bean-bridge-agent@users.noreply.github.com"
@@ -94,3 +96,4 @@ jobs:
           fi
         env:
           AGENT_CANDIDATE: ${{ steps.bean.outputs.candidate }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
