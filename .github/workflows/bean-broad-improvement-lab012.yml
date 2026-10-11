@@ -1,4 +1,4 @@
-name: BEAN Lab 012 broad self-improvement falsification
+name: BEAN Labs 012-013 broad improvement and adaptive recovery
 on:
   push:
     branches: [experiment/bean-broad-improvement-lab012-20261010]
@@ -39,9 +39,13 @@ jobs:
           python -m compileall -q experiments/broad_improvement tests/test_broad_improvement_lab012.py
           python -m pytest tests/test_broad_improvement_lab012.py -q
           python -m experiments.broad_improvement.lab012 --core --out lab012-report-${{ matrix.os }}.json
+          python -m pytest tests/test_broad_improvement_lab013.py -q
+          python -m experiments.broad_improvement.lab013 --out lab013-report-${{ matrix.os }}.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: lab012-report-${{ matrix.os }}
-          path: lab012-report-${{ matrix.os }}.json
+          path: |
+            lab012-report-${{ matrix.os }}.json
+            lab013-report-${{ matrix.os }}.json
           if-no-files-found: warn
