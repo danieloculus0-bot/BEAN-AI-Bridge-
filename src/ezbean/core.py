@@ -91,15 +91,18 @@ class Report:
 
 
 def latest_entities(observations: Iterable[Observation], as_of: datetime) -> dict[tuple[str, str, str], Observation]:
-    latest: dict[tuple[str, str, str], Observation] = {}
+    # Cache the parsed timestamp with each candidate. Formerly the incumbent
+    # timestamp was reparsed whenever another revision arrived for that entity.
+    latest: dict[tuple[str, str, str], tuple[datetime, str, Observation]] = {}
     for o in observations:
-        if utc_datetime(o.observed_at) > as_of:
+        timestamp = utc_datetime(o.observed_at)
+        if timestamp > as_of:
             continue
         key = (o.source, o.entity_type, o.entity_id)
         old = latest.get(key)
-        if old is None or (utc_datetime(o.observed_at), o.event_id) > (utc_datetime(old.observed_at), old.event_id):
-            latest[key] = o
-    return latest
+        if old is None or (timestamp, o.event_id) > (old[0], old[1]):
+            latest[key] = (timestamp, o.event_id, o)
+    return {key: value[2] for key, value in latest.items()}
 
 
 def calculate(observations: Iterable[Observation], window_start: str, as_of: str) -> Report:
