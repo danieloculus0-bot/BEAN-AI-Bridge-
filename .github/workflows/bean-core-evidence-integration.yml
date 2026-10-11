@@ -28,7 +28,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         python-version: ['3.11', '3.12']
     env:
-      PYTHONPATH: ${{ github.workspace }}/src${{ runner.os == 'Windows' && ';' || ':' }}${{ github.workspace }}/bean-core
+      PYTHONPATH: ${{ github.workspace }}/src${{ matrix.os == 'windows-latest' && ';' || ':' }}${{ github.workspace }}/bean-core
     steps:
       - name: Checkout Bridge under test
         uses: actions/checkout@v4
