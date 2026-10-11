@@ -16,6 +16,14 @@ This repository is the **generic evidence, ERP reporting and replay integration 
 
 The Bridge's generic KPI functions and synthetic tests are distinct from BEAN's cognition modules. Links between projects do not imply that optional experimental branches have been merged or production integrations deployed.
 
+## Evidence learning loop (opt-in)
+
+The [EvidenceLearningLoop](experiments/learning_loop/README.md) is a reusable, provider-agnostic component that routes rejected or stale model answers to a separately supplied investigator and evidence verifier. It requires corroboration from **at least two distinct verified provenance origins** before creating a new versioned definition, retains conflicting and inconclusive cases, and writes bounded durable cycle records to SQLite.
+
+Import: `from ezbean import EvidenceLearningLoop, SourceObservation`.
+
+**Boundaries:** the host must independently authenticate and authorize its verifier; mere source IDs are not evidence of truth. This module neither modifies LLM weights nor runs unattended, performs external actions, or touches production ERP data. The BEAN Core audit journal is an optional local integration when Core is installed. The bundled experiment uses synthetic examples; see the [cross-platform tests](tests/test_learning_loop_lab009.py).
+
 ## Architecture
 
 ```
