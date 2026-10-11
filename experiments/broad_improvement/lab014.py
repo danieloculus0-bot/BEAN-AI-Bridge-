@@ -151,11 +151,12 @@ class RecoveryLearner(AdaptiveLearner):
 
 
 def episodes(domain: str, *, training: bool, pattern: str) -> list[tuple[str, int, bool]]:
+    if pattern not in {"stable", "reversal", "repeat"}:
+        raise ValueError("unsupported pattern")
+    root = (14000 if training else 83000) + {"reversal": 0, "stable": 10000, "repeat": 20000}[pattern]
     if training:
-        root = 14000
         durations = {"normal": 20, "changed": 34, "recovered": 24, "changed_again": 24}
     else:
-        root = 83000
         durations = {"normal": 28, "changed": 42, "recovered": 34, "changed_again": 34}
     if pattern == "stable":
         durations = {"normal": sum(durations.values())}
@@ -275,8 +276,8 @@ def run() -> dict:
         "schema": "bean.lab014.v1", "synthetic_only": True,
         "baseline": "frozen_lab013_equal_uniform_audit_budget",
         "catalogue": {name: list(policy.weights) for name, policy in catalogue.items()},
-        "training_seed_interval": [14000, 16099],
-        "new_holdout_seed_interval": [83000, 85199],
+        "training_seed_bases": [14000, 24000, 34000],
+        "new_holdout_seed_bases": [83000, 93000, 103000],
         "selection_scores_train_only": train_scores,
         "chosen_index": index, "chosen_controls": asdict(choices[index]),
         "holdout": final, "verdict": (
