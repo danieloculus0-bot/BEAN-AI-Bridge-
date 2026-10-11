@@ -128,6 +128,37 @@ class AdaptiveLearner:
                         (6 if item["truth"] else 0) - 2) / record["sample_probability"]
         return delta / len(records) if records else 0.0
 
+    def _investigate(self, records: list[dict]) -> dict:
+        """Generate a falsifiable feature-reliability hypothesis from audited labels.
+
+        Feature separation is an association, not proof of the physical cause.
+        Unknown coverage stays unknown; never manufacture certainty.
+        """
+        verified = [item for record in records for item in record["audits"]]
+        signals = []
+        for feature in FEATURES:
+            high = [item["truth"] for item in verified
+                    if item["features"][feature] >= 0.65]
+            low = [item["truth"] for item in verified
+                   if item["features"][feature] < 0.65]
+            if len(high) < 4 or len(low) < 4:
+                signals.append({"feature": feature, "status": "insufficient_evidence",
+                                "high_samples": len(high), "low_samples": len(low),
+                                "predictive_separation": None})
+                continue
+            separation = sum(high) / len(high) - sum(low) / len(low)
+            signals.append({"feature": feature, "status": "audited_association",
+                            "high_samples": len(high), "low_samples": len(low),
+                            "predictive_separation": round(separation, 4)})
+        ranked = sorted((x for x in signals if x["status"] == "audited_association"),
+                        key=lambda x: (x["predictive_separation"], x["feature"]))
+        return {"hypothesis": ("A historically weighted feature may no longer predict true events"
+                               if ranked else "Insufficient independent evidence for feature diagnosis"),
+                "weakest_observed_feature": ranked[0]["feature"] if ranked else None,
+                "weakest_separation": ranked[0]["predictive_separation"] if ranked else None,
+                "feature_checks": signals, "causal_proof": False,
+                "sampling": "independent_uniform_audits_only"}
+
     def _review(self):
         p = self.parameters
         if (len(self.transitions) >= p.max_policy_changes or
@@ -161,6 +192,7 @@ class AdaptiveLearner:
             "world": self.world_index, "from": old, "to": candidate,
             "estimated_advantage_per_world": round(advantage, 4),
             "cause_hypothesis": "Independent audits favor a different explanation/priority",
+            "investigation": self._investigate(window),
             "evidence_count": sum(len(r["audits"]) for r in window),
             "evidence_ids": evidence_ids,
             "rollback_to": old, "simulation_only": True,
