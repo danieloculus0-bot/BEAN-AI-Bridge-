@@ -23,7 +23,8 @@ class Ledger:
             UNIQUE(source, event_id))''')
         self.connection.commit()
 
-    def ingest(self, observation: Observation) -> bool:
+    def _ingest_uncommitted(self, observation: Observation) -> bool:
+        """Only called from the owning SQLite transaction."""
         serialized = json.dumps(observation.payload, sort_keys=True, separators=(',', ':'), allow_nan=False)
         key = (observation.source, observation.event_id)
         old = self.connection.execute('SELECT entity_type, entity_id, observed_at, payload_json FROM observations WHERE source=? AND event_id=?', key).fetchone()
@@ -33,11 +34,20 @@ class Ledger:
                 raise ValueError(f'Conflicting ERP event identity {key}')
             return False
         self.connection.execute('INSERT INTO observations(source,event_id,entity_type,entity_id,observed_at,payload_json) VALUES (?,?,?,?,?,?)', (*key, *val))
-        self.connection.commit()
         return True
 
+    def ingest(self, observation: Observation) -> bool:
+        with self.connection:
+            return self._ingest_uncommitted(observation)
+
     def ingest_all(self, observations: Iterable[Observation]) -> int:
-        return sum(1 for o in observations if self.ingest(o))
+        """Commit the entire iterable once; rollback on late conflict or parse errors.
+
+        This also protects callers passing streaming generator adapters: an
+        exception after several yielded observations leaves no partial batch.
+        """
+        with self.connection:
+            return sum(1 for o in observations if self._ingest_uncommitted(o))
 
     def replay(self) -> list[Observation]:
         rows = self.connection.execute('SELECT source,event_id,entity_type,entity_id,observed_at,payload_json FROM observations ORDER BY sequence').fetchall()
