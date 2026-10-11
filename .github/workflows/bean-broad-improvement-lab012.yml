@@ -1,0 +1,43 @@
+name: BEAN Lab 012 broad self-improvement falsification
+on:
+  push:
+    branches: [experiment/bean-broad-improvement-lab012-20261010]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  broad-improvement:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout Bridge
+        uses: actions/checkout@v4
+      - name: Checkout BEAN Core
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: e1973e681b3e35905276e661a1ece51321f54d22
+          path: bean-core
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test prerequisites
+        run: python -m pip install pytest psutil
+      - name: Run Lab012 tests and BEAN Core integration
+        shell: bash
+        run: |
+          export PYTHONPATH="$GITHUB_WORKSPACE:$GITHUB_WORKSPACE/src:$GITHUB_WORKSPACE/bean-core"
+          python -m compileall -q experiments/broad_improvement tests/test_broad_improvement_lab012.py
+          python -m pytest tests/test_broad_improvement_lab012.py -q
+          python -m experiments.broad_improvement.lab012 --core --out lab012-report-${{ matrix.os }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab012-report-${{ matrix.os }}
+          path: lab012-report-${{ matrix.os }}.json
+          if-no-files-found: warn
