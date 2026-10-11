@@ -10,19 +10,19 @@ The [JobBOSS export sponge](JOBBOSS_SPREADSHEET_SPONGE.md) must have ingested yo
 
 **PowerShell:**
 
-\`\`\`powershell
+```powershell
 $env:PYTHONPATH = "src"
 python -m ezbean.jobboss_exports --database "C:\private\bean\site.sqlite" scan "C:\private\exports"
 python -m ezbean.daily_brief --database "C:\private\bean\site.sqlite" --site SITE_A --start 2026-10-01 --as-of 2026-10-10T12:00:00Z --previous-as-of 2026-10-09T12:00:00Z --out "C:\private\bean\morning.html"
-\`\`\`
+```
 
 **Linux/macOS:**
 
-\`\`\`bash
+```bash
 PYTHONPATH=src python -m ezbean.daily_brief --database ./private/site.sqlite --site SITE_A --start 2026-10-01 --as-of 2026-10-10T12:00:00Z --previous-as-of 2026-10-09T12:00:00Z --out ./private/morning.html
-\`\`\`
+```
 
-Omit \`--previous-as-of\` for the first run. The timestamps must include explicit timezones; the optional previous cutoff must be earlier than the current cutoff and use the same reporting period. For real use, replace these examples with the **actual known export cutoff timestamps** and keep the start date consistent. The command produces \`morning.html\` and \`morning.json\` locally. Do not check the outputs or SQLite database into a public repo.
+Omit `--previous-as-of` for the first run. The timestamps must include explicit timezones; the optional previous cutoff must be earlier than the current cutoff and use the same reporting period. For real use, replace these examples with the **actual known export cutoff timestamps** and keep the start date consistent. The command produces `morning.html` and `morning.json` locally. Do not check the outputs or SQLite database into a public repo.
 
 ## How to read the output
 
@@ -36,9 +36,9 @@ The file is intentionally *not* a scheduled daemon or substitute for authorized 
 
 ## Reproduce the public tests
 
-\`\`\`bash
+```bash
 PYTHONPATH=src python -m unittest discover -s tests -p test_daily_brief.py -v
-\`\`\`
+```
 
 The tests use fictional data and an empty real SQLite ledger. They challenge N/A semantics, contradictory dates, RMA quarantine, privacy redaction, source cutoff ordering, and idempotent reproducibility on Windows and Linux.
 
