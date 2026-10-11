@@ -35,9 +35,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Reproduce real failing witness and ask GitHub Models
+      - name: Reproduce red witness and request a model-authored candidate
         env:
           BEAN_MODELS_TOKEN: ${{ github.token }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python tools/bean_novel_repair.py generate --receipt .bean-peer/generate-receipt.json
       - name: Preserve baseline and model-attempt evidence
         if: always()
