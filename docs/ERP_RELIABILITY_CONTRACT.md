@@ -48,3 +48,7 @@ Supported domains: \`job\` (scope \`full_snapshot\` including all open jobs), \`
 - Existing RMA/OTD fixture and all JobBOSS offline import/management tests remain passing.
 
 Run locally with \`PYTHONPATH=src python -m unittest discover -s tests -v\`. GitHub runs the same suite on Windows and Linux.
+
+## Superseding coverage assertions
+
+A coverage declaration is a versioned *claim*: a later record from the same source and domain supersedes earlier records, even when it carries a new record/entity ID. If the latest claim is incomplete, revoked, stale, malformed or has an incompatible scope, that source is **UNKNOWN** for this reporting cutoff. A later valid complete assertion can restore eligibility for a reported zero, and the reported zero must reference the **new** assertion only. Ingestion order cannot change that outcome. This prevents an outdated coverage certificate from surviving an explicit later revocation.
