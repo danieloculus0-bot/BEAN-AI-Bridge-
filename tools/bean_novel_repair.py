@@ -42,7 +42,7 @@ def oracle_text(challenge):
 
 def suite(root, challenge=None):
     env = dict(os.environ)
-    for name in ("BEAN_MODELS_TOKEN", "GITHUB_TOKEN", "GH_TOKEN"):
+    for name in ("BEAN_MODELS_TOKEN", "OPENROUTER_API_KEY", "GITHUB_TOKEN", "GH_TOKEN"):
         env.pop(name, None)
     env["PYTHONPATH"] = str(root.resolve() / "src")
     folder = (challenge / "tests") if challenge else (root / "tests")
