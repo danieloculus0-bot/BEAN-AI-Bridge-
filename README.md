@@ -62,6 +62,16 @@ This project intentionally has **no dependency on 64Δ**. It is an independent E
 
 **Scope warning:** Initial OTD definition assumes one completed shipping date per job. Partial shipments, customer-requested-versus-promised dates, credits, RMA costing, cancellations, and official business rules require explicit ERP mapping and approval before production reporting. A missing denominator is N/A rather than 0%.
 
+## Daily Exception Brief (opt-in, local)
+
+BEAN can now turn an existing **private JobBOSS export ledger** into a one-page [Daily Exception Brief](docs/DAILY_EXCEPTION_BRIEF.md), with shipment-line OTD, verified/unknown state, past-due job-line evidence, RMA uncertainty and a prioritized source gap-resolution queue. Run a current report against an earlier cutoff for same-period evidence changes, without exposing raw source identities or treating unknown data as zero.
+
+```bash
+PYTHONPATH=src python -m ezbean.daily_brief --database ./private/site.sqlite --site SITE_A --start 2026-10-01 --as-of 2026-10-10T12:00:00Z --out ./private/morning.html
+```
+
+This is a **read-only offline report**, not an authorized ERP integration, notifications service, or official OTD scorecard. Local files and outputs must stay outside public GitHub repositories. Tests use synthetic data and explicitly check incorrect/unknown cases.
+
 ## Local smoke-test path
 
 Python 3.11+; standard library only:
