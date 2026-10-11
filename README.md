@@ -6,6 +6,16 @@ EZ-BEAN is the planned EZ Fabricating ERP-linked KPI development and operational
 
 This repository is a **public-safe, generic implementation and smoke-test path** for that architecture. It has no live connection to EZ Fab ERP systems and contains **synthetic data only**. It is **not** the ERP production connector, nor a deployed real-time dashboard.
 
+## Part of the BEAN ecosystem
+
+This repository is the **generic evidence, ERP reporting and replay integration layer**. For the persistent reasoning architecture, SQLite memory, uncertainty handling and review-required proposals, see **[BEAN Core](https://github.com/danieloculus0-bot/BEAN)**.
+
+- [Start BEAN Core with an offline mock-provider demonstration](https://github.com/danieloculus0-bot/BEAN/blob/main/docs/GETTING_STARTED.md)
+- [Evidence continuity contract between Core and Bridge](https://github.com/danieloculus0-bot/BEAN/blob/main/docs/EVIDENCE_BRIDGE_READINESS.md)
+- [Published experimental findings and known limitations](https://github.com/danieloculus0-bot/BEAN/blob/main/docs/experimental-research-index-2026-10.md)
+
+The Bridge's generic KPI functions and synthetic tests are distinct from BEAN's cognition modules. Links between projects do not imply that optional experimental branches have been merged or production integrations deployed.
+
 ## Architecture
 
 ```
