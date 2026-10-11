@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   daily-brief:
-    runs-on: \${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -37,7 +37,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
-          python-version: \${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version }}
       - name: Compile evidence and tests
         run: python -m compileall -q src/ezbean/daily_brief.py tests/test_daily_brief.py
       - name: Evaluate synthetic privacy and exception contracts
