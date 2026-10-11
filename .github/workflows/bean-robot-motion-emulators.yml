@@ -1,0 +1,113 @@
+name: BEAN Bridge Robot Motion microcontroller emulators
+
+# Drop superseded emulator builds rather than exhausting hosted-runner minutes.
+concurrency:
+  group: bean-robot-motion-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main, experiment/bean-robot-motion-emulators-20261011]
+    paths:
+      - 'experiments/robot_motion/**'
+      - '.github/workflows/bean-robot-motion-emulators.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'experiments/robot_motion/**'
+      - '.github/workflows/bean-robot-motion-emulators.yml'
+  workflow_dispatch:
+  # On default-branch only, rerun real MCU emulators once per week.
+  schedule:
+    - cron: '0 8 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  native-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile and test shared C motion contract
+        run: bash experiments/robot_motion/run_host.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: robot-motion-native-contract
+          path: experiments/robot_motion/build/host/result.log
+          if-no-files-found: warn
+
+  arduino-nano-simavr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install AVR toolchain and simavr emulator
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends gcc-avr avr-libc binutils-avr simavr
+      - name: Execute ATmega328P machine code through simavr
+        run: bash experiments/robot_motion/run_avr.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: robot-motion-avr-simavr
+          path: experiments/robot_motion/build/avr/
+          if-no-files-found: warn
+
+  esp32-qemu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 27
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build ESP-IDF firmware and execute Espressif QEMU
+        run: bash experiments/robot_motion/run_esp32_qemu.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: robot-motion-esp32-qemu
+          path: experiments/robot_motion/build/esp32/qemu.log
+          if-no-files-found: warn
+
+  esp32-wokwi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 27
+    env:
+      WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Record Wokwi unavailable without token
+        if: env.WOKWI_CLI_TOKEN == ''
+        run: |
+          mkdir -p experiments/robot_motion/build/wokwi
+          echo '{"lane":"wokwi","status":"NOT_RUN_MISSING_TOKEN","pass":false}' > experiments/robot_motion/build/wokwi/verdict.json
+          echo 'Wokwi NOT_RUN_MISSING_TOKEN - not an emulation pass' >> "$GITHUB_STEP_SUMMARY"
+      - name: Build ESP32 firmware for Wokwi
+        if: env.WOKWI_CLI_TOKEN != ''
+        run: |
+          docker run --rm -v "$PWD/experiments/robot_motion":/workspace -w /workspace/esp32_idf -e IDF_GIT_SAFE_DIR=/workspace espressif/idf:v5.4 idf.py build
+      - name: Execute Wokwi ESP32 emulator
+        if: env.WOKWI_CLI_TOKEN != ''
+        uses: wokwi/wokwi-ci-action@v1
+        with:
+          token: ${{ secrets.WOKWI_CLI_TOKEN }}
+          path: experiments/robot_motion/esp32_idf
+          timeout: '30000'
+          expect_text: ESP32_MOTION_PASS
+          fail_text: ESP32_MOTION_FAIL
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: robot-motion-esp32-wokwi-status
+          path: experiments/robot_motion/build/wokwi/
+          if-no-files-found: warn
