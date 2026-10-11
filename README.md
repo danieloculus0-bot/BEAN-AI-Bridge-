@@ -112,3 +112,7 @@ The Bridge also provides a **deterministic, local-first versioned definition lib
 ## Generic ledger reliability contract
 
 Raw generic normalized KPI events now require an explicit, versioned completeness assertion before an otherwise unobserved count is displayed as zero. Missing data remains `null`/N/A, and batch ingestion is atomic on all-or-nothing conflicts. Source completeness is **asserted by an adapter**, not independently authenticated. The separate JobBOSS reporting adapter has its own coverage and KPI semantics. See [ERP source completeness and transaction contract](docs/ERP_RELIABILITY_CONTRACT.md).
+
+## Robot Motion (experimental)
+
+The [Robot Motion Emulator Lab](experiments/robot_motion/README.md) runs a shared motor interlock under native C, Arduino Nano/ATmega328P simavr, and ESP32 QEMU, with an optional token-gated ESP32 Wokwi lane. It uses synthetic test vectors, never drives robot hardware, and records separate emulator evidence. This is distinct from BEAN Core's simulated joint-state motion layer and from production motor control.
