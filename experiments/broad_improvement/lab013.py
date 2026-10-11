@@ -175,6 +175,58 @@ class AdaptiveLearner:
         self.pending_count = 0
         self.cooldown_until = self.world_index + p.cooldown_worlds
 
+    def export_state(self) -> dict:
+        """Crash-recoverable experiment state. The caller must persist this JSON."""
+        payload = {
+            "schema": "bean.lab013.state.v1", "parameters": asdict(self.parameters),
+            "catalogue": {k: list(v.weights) for k, v in self.catalogue.items()},
+            "current": self.current, "previous": self.previous,
+            "history": self.history, "transitions": self.transitions,
+            "pending": self.pending, "pending_count": self.pending_count,
+            "cooldown_until": self.cooldown_until,
+            "world_index": self.world_index, "retired": self.retired,
+        }
+        return {**payload, "sha256": _fingerprint(payload)}
+
+    @classmethod
+    def restore_state(cls, state: dict) -> "AdaptiveLearner":
+        if not isinstance(state, dict) or state.get("schema") != "bean.lab013.state.v1":
+            raise ValueError("invalid learning state schema")
+        unsigned = {k: v for k, v in state.items() if k != "sha256"}
+        if state.get("sha256") != _fingerprint(unsigned):
+            raise ValueError("state integrity check failed")
+        try:
+            catalogue = {k: Policy(tuple(v)) for k, v in state["catalogue"].items()}
+            params = LearningParameters(**state["parameters"])
+            result = cls(catalogue, params, initial=state["current"])
+            if state["previous"] is not None and state["previous"] not in catalogue:
+                raise ValueError("unknown historical policy")
+            if state["pending"] is not None and state["pending"] not in catalogue:
+                raise ValueError("unknown pending policy")
+            if len(state["history"]) != state["world_index"]:
+                raise ValueError("broken evidence continuity")
+            for index, record in enumerate(state["history"]):
+                if record["world"] != index or record["sha256"] != _fingerprint(
+                        {k: v for k, v in record.items() if k != "sha256"}):
+                    raise ValueError("corrupt audit evidence")
+            for record in state["transitions"]:
+                if record["sha256"] != _fingerprint({k: v for k, v in record.items()
+                                                    if k != "sha256"}):
+                    raise ValueError("corrupt policy transition")
+                if record["from"] not in catalogue or record["to"] not in catalogue:
+                    raise ValueError("unknown revision policy")
+            result.previous = state["previous"]
+            result.pending = state["pending"]
+            result.pending_count = state["pending_count"]
+            result.cooldown_until = state["cooldown_until"]
+            result.history = list(state["history"])
+            result.transitions = list(state["transitions"])
+            result.world_index = state["world_index"]
+            result.retired = list(state["retired"])
+            return result
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            raise ValueError("invalid or corrupted learning state") from exc
+
     def snapshot(self) -> dict:
         return {
             "active_policy": self.current,
