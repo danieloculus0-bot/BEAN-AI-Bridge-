@@ -40,7 +40,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/bean-core:${{ github.workspace }}/bridge/src:${{ github.workspace }}/bridge
         run: |
           python -m compileall -q bean-core/bean/integration bridge/experiments/readiness
-          python -m pytest bean-core/bean/tests/test_evidence_bridge_contract.py -q --junitxml=bridge/core-native-contract-tests.xml
+          python -m pytest bean-core/bean/tests/test_evidence_bridge_contract.py bean-core/bean/tests/test_evidence_review_task.py -q --junitxml=bridge/core-native-contract-tests.xml
           cd bridge
           python -m unittest discover -s tests -v
           python -m experiments.readiness.core_bridge_smoke --out readiness-evidence.json
@@ -51,7 +51,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}\bean-core;${{ github.workspace }}\bridge\src;${{ github.workspace }}\bridge
         run: |
           python -m compileall -q bean-core/bean/integration bridge/experiments/readiness
-          python -m pytest bean-core/bean/tests/test_evidence_bridge_contract.py -q --junitxml=bridge/core-native-contract-tests.xml
+          python -m pytest bean-core/bean/tests/test_evidence_bridge_contract.py bean-core/bean/tests/test_evidence_review_task.py -q --junitxml=bridge/core-native-contract-tests.xml
           cd bridge
           python -m unittest discover -s tests -v
           python -m experiments.readiness.core_bridge_smoke --out readiness-evidence.json
