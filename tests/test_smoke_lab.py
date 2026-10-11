@@ -24,6 +24,7 @@ class SmokeLabTests(unittest.TestCase):
         self.assertEqual(assess(report, ("guest_boot",))["checks"]["guest_boot"]["status"], "unproven")
     def test_replay_and_idempotency(self):
         report = self.case({"package_install": "pass", "cli_smoke": "pass"})
+        report["phase"] = "python"
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "ledger.sqlite"
             a = evaluate(report, "python", path, repetitions=7)
@@ -32,6 +33,18 @@ class SmokeLabTests(unittest.TestCase):
             self.assertTrue(a["new_observation"])
             self.assertFalse(b["new_observation"])
             self.assertEqual(a["sha256"], b["sha256"])
+    def test_phase_mismatch_never_enters_evidence_ledger(self):
+        report = self.case({"package_install": "pass", "cli_smoke": "pass"})
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "ledger.sqlite"
+            with self.assertRaisesRegex(ValueError, "phase"):
+                evaluate(report, "python", path)
+            self.assertFalse(path.exists())
+
+    def test_empty_required_gate_is_not_a_pass(self):
+        with self.assertRaisesRegex(ValueError, "at least one"):
+            assess(self.case(), ())
+
     def test_critical_boot_fails_if_vm_only_times_out(self):
         report = self.case({"package_install": "pass",
                             "boot_structure": "pass",
