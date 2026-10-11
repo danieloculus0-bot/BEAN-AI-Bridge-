@@ -1,0 +1,66 @@
+name: BEAN Core-Bridge native evidence integration smoke
+
+on:
+  push:
+    branches:
+      - smoke/core-evidence-contract-20261010
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-evidence-contract:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout Bridge smoke fixture
+        uses: actions/checkout@v4
+        with:
+          path: bridge
+      - name: Checkout isolated BEAN Core evidence contract
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: feat/evidence-bridge-contract-20261010
+          path: bean-core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test runtime
+        run: python -m pip install pytest psutil
+      - name: Run Core and Bridge regression on Linux
+        if: runner.os != 'Windows'
+        env:
+          PYTHONPATH: ${{ github.workspace }}/bean-core:${{ github.workspace }}/bridge/src:${{ github.workspace }}/bridge
+        run: |
+          python -m compileall -q bean-core/bean/integration bridge/experiments/readiness
+          python -m pytest bean-core/bean/tests/test_evidence_bridge_contract.py -q --junitxml=bridge/core-native-contract-tests.xml
+          cd bridge
+          python -m unittest discover -s tests -v
+          python -m experiments.readiness.core_bridge_smoke --out readiness-evidence.json
+      - name: Run Core and Bridge regression on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}\bean-core;${{ github.workspace }}\bridge\src;${{ github.workspace }}\bridge
+        run: |
+          python -m compileall -q bean-core/bean/integration bridge/experiments/readiness
+          python -m pytest bean-core/bean/tests/test_evidence_bridge_contract.py -q --junitxml=bridge/core-native-contract-tests.xml
+          cd bridge
+          python -m unittest discover -s tests -v
+          python -m experiments.readiness.core_bridge_smoke --out readiness-evidence.json
+      - name: Archive native evidence witnesses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-native-evidence-${{ matrix.os }}
+          path: |
+            bridge/readiness-evidence.json
+            bridge/core-native-contract-tests.xml
+          if-no-files-found: ignore
