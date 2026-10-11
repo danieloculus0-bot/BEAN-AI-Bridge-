@@ -31,7 +31,11 @@ jobs:
       - name: Run Lab012 tests and BEAN Core integration
         shell: bash
         run: |
-          export PYTHONPATH="$GITHUB_WORKSPACE:$GITHUB_WORKSPACE/src:$GITHUB_WORKSPACE/bean-core"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            export PYTHONPATH="$GITHUB_WORKSPACE;$GITHUB_WORKSPACE/src;$GITHUB_WORKSPACE/bean-core"
+          else
+            export PYTHONPATH="$GITHUB_WORKSPACE:$GITHUB_WORKSPACE/src:$GITHUB_WORKSPACE/bean-core"
+          fi
           python -m compileall -q experiments/broad_improvement tests/test_broad_improvement_lab012.py
           python -m pytest tests/test_broad_improvement_lab012.py -q
           python -m experiments.broad_improvement.lab012 --core --out lab012-report-${{ matrix.os }}.json
