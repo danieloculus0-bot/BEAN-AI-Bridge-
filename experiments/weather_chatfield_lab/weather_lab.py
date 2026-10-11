@@ -58,11 +58,20 @@ def fetch(url, params):
             if "error" in payload:
                 raise RuntimeError(str(payload.get("reason", "source response error")))
             return {"url": request_url, "sha256": sha(payload), "payload": payload}
-        except (OSError, ValueError, RuntimeError) as exc:
-            last = exc
+        except urllib.error.HTTPError as exc:
+            # Preserve the API's actual explanation: opaque HTTP 400s hid every
+            # failed as-issued weather run in the first real backtest.
+            detail = exc.read(1200).decode("utf-8", errors="replace")
+            last = "HTTP " + str(exc.code) + ": " + detail[:700]
+            if exc.code in (400, 404):
+                break  # Permanent invalid/missing archive; no point retrying
             if n < 2:
                 time.sleep(2 * (n + 1))
-    raise RuntimeError("Source request failed: " + repr(last))
+        except (OSError, ValueError, RuntimeError) as exc:
+            last = str(exc)
+            if n < 2:
+                time.sleep(2 * (n + 1))
+    raise RuntimeError("Source request failed: " + str(last))
 
 
 def daily_rows(payload):
@@ -163,7 +172,10 @@ def run_forecast(output):
                     "latitude": LAT, "longitude": LON, "run": issue.isoformat() + "T00:00",
                     "models": model_id, "daily": ",".join(METRICS),
                     "timezone": TZ, "temperature_unit": "celsius",
-                    "precipitation_unit": "mm", "forecast_days": 16,
+                    "precipitation_unit": "mm",
+                    # ECMWF IFS HRES is a 10-day model, not a 16-day model.
+                    # Request enough to score the seven complete future days.
+                    "forecast_days": 9 if horizon == 7 else 16,
                 })
                 forecast = daily_rows(source["payload"])
                 if not add_predictions(predictions, issue, horizon, provider, forecast,
@@ -298,13 +310,25 @@ def run_grade(pred_path, truth_path, output):
                                 if q["source"] == name and q["horizon"] == horizon]
                         if len(seen) >= MIN_HISTORY:
                             candidates[name] = sum(seen) / len(seen)
-                    selected = min(candidates, key=candidates.get) if candidates else "CLIMATOLOGY_2015_2024"
+                    # Only call source choice "learned" when two distinct
+                    # scored contenders BOTH have sufficiently mature history.
+                    # Repeatedly choosing the ONLY available climate baseline
+                    # is not weather-model learning, no matter how many cases.
+                    if len(candidates) >= 2:
+                        selected = min(candidates, key=candidates.get)
+                        decision_status = "learned"
+                    elif candidates:
+                        selected = "CLIMATOLOGY_2015_2024"
+                        decision_status = "single_source_no_comparison"
+                    else:
+                        selected = "CLIMATOLOGY_2015_2024"
+                        decision_status = "cold_start_baseline"
                     selected_error = source_errors[selected][metric]
                     scored.append({"issue": issue, "horizon": horizon, "source": "BEAN_TRUST_SELECTION",
                                    "metric": metric, "selected": selected, "error": selected_error,
                                    "history_count": len([q for q in history if q["source"] == selected and q["horizon"] == horizon]),
                                    "last_valid": (date.fromisoformat(issue) + timedelta(days=horizon)).isoformat(),
-                                   "status": "learned" if candidates else "cold_start_baseline"})
+                                   "status": decision_status})
             for name, err in source_errors.items():
                 prior_outcomes.append({"source": name, "horizon": horizon, "errors": err,
                                        "last_valid": (date.fromisoformat(issue) + timedelta(days=horizon)).isoformat()})
@@ -318,6 +342,7 @@ def run_grade(pred_path, truth_path, output):
             if source == "BEAN_TRUST_SELECTION":
                 summary[str(horizon)][source] = {"n_metrics": len(matches),
                     "learned_choices": sum(x["status"] == "learned" for x in matches),
+                    "single_source_no_comparison": sum(x["status"] == "single_source_no_comparison" for x in matches),
                     "cold_start_choices": sum(x["status"] == "cold_start_baseline" for x in matches)}
             else:
                 summary[str(horizon)][source] = {
