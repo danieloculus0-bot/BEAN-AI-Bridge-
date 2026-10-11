@@ -1,0 +1,44 @@
+name: BEAN evidence learning loop cross-platform
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/ezbean/learning_loop.py'
+      - 'src/ezbean/__init__.py'
+      - 'tests/test_learning_loop_lab009.py'
+      - 'experiments/learning_loop/**'
+      - '.github/workflows/bean-evidence-learning-loop.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/ezbean/learning_loop.py'
+      - 'src/ezbean/__init__.py'
+      - 'tests/test_learning_loop_lab009.py'
+      - 'experiments/learning_loop/**'
+      - '.github/workflows/bean-evidence-learning-loop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-loop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile module
+        run: python -m compileall -q src/ezbean/learning_loop.py
+      - name: Test learning loop without hosted model or real sources
+        run: python -m unittest discover -s tests -p test_learning_loop_lab009.py -v
