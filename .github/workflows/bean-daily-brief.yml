@@ -1,0 +1,44 @@
+name: BEAN private daily exception brief
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/ezbean/daily_brief.py'
+      - 'tests/test_daily_brief.py'
+      - 'docs/DAILY_EXCEPTION_BRIEF.md'
+      - '.github/workflows/bean-daily-brief.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/ezbean/daily_brief.py'
+      - 'tests/test_daily_brief.py'
+      - 'docs/DAILY_EXCEPTION_BRIEF.md'
+      - '.github/workflows/bean-daily-brief.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  daily-brief:
+    runs-on: \${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: \${{ matrix.python-version }}
+      - name: Compile evidence and tests
+        run: python -m compileall -q src/ezbean/daily_brief.py tests/test_daily_brief.py
+      - name: Evaluate synthetic privacy and exception contracts
+        run: python -m unittest discover -s tests -p test_daily_brief.py -v
