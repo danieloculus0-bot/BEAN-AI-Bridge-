@@ -1,0 +1,81 @@
+name: BEAN dynamic library primary output gate repeated smoke LAB008
+
+on:
+  push:
+    branches:
+      - experiment/bean-dynamic-output-gate-lab008-20261010
+    paths:
+      - 'src/ezbean/knowledge_gate.py'
+      - 'tests/test_knowledge_gate_lab008.py'
+      - 'experiments/knowledge_lab/**'
+      - '.github/workflows/bean-dynamic-definitions-lab008.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-regressions:
+    name: Definitions output gate
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Source compilation
+        run: python -m compileall -q src tests experiments/knowledge_lab
+      - name: Full bridge deterministic regressions
+        run: python -m unittest discover -s tests -v
+      - name: Re-run specific knowledge gate smoke suite
+        run: python -m unittest discover -s tests -p test_knowledge_gate_lab008.py -v
+
+  live-local-model:
+    name: Real local Ollama repeated output gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install local inference runtime
+        run: |
+          curl -fsSL https://ollama.com/install.sh -o /tmp/ollama-install.sh
+          sh /tmp/ollama-install.sh
+          ollama --version
+      - name: Start local model and verify availability
+        run: |
+          nohup ollama serve > /tmp/ollama-lab008-server.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:11434/api/tags > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags > /dev/null
+          ollama pull qwen2.5:1.5b
+          ollama list
+      - name: Repeat 10 definition checks three times
+        run: python -m experiments.knowledge_lab.run_lab008 --repeat 3 --model qwen2.5:1.5b --min-accepted 27 --min-answered 16 --out lab008-live-output-gate.json
+      - name: Preserve local Ollama diagnostics
+        if: always()
+        run: cp /tmp/ollama-lab008-server.log lab008-ollama-server.log 2>/dev/null || true
+      - name: Upload auditable model output tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-lab008-live-output-evidence
+          path: |
+            lab008-live-output-gate.json
+            lab008-ollama-server.log
+          if-no-files-found: warn
