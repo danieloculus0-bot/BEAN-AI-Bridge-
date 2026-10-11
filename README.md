@@ -8,6 +8,8 @@ This repository is a **public-safe, generic implementation and smoke-test path**
 
 ## Part of the BEAN ecosystem
 
+🌱 **[Meet BEAN on the live website](https://danieloculus0-bot.github.io/BEAN/)** · [Follow BEAN's development on GitHub](https://github.com/danieloculus0-bot/BEAN) · [Reproduce the offline quickstart](https://github.com/danieloculus0-bot/BEAN/blob/main/docs/GETTING_STARTED.md)
+
 This repository is the **generic evidence, ERP reporting and replay integration layer**. For the persistent reasoning architecture, SQLite memory, uncertainty handling and review-required proposals, see **[BEAN Core](https://github.com/danieloculus0-bot/BEAN)**.
 
 - [Start BEAN Core with an offline mock-provider demonstration](https://github.com/danieloculus0-bot/BEAN/blob/main/docs/GETTING_STARTED.md)
