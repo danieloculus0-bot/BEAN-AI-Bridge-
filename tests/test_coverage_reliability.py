@@ -89,6 +89,50 @@ class CoverageReliabilityTests(unittest.TestCase):
         self.assertIsNone(report.kpis['shipments_completed'].value)
         self.assertEqual(report.coverage['job']['state'], 'UNKNOWN')
 
+    def test_later_revocation_overrides_earlier_complete_claim(self):
+        old = obs('source_coverage', 'old-complete', {
+            'domain': 'rma', 'window_start': START, 'through': AS_OF,
+            'complete': True, 'scope': 'reporting_window',
+        }, observed_at='2026-10-08T12:00:00+00:00')
+        revoked = obs('source_coverage', 'zz-new-revocation', {
+            'domain': 'rma', 'window_start': START, 'through': AS_OF,
+            'complete': False, 'scope': 'reporting_window',
+        }, observed_at='2026-10-08T15:00:00+00:00')
+        for events in ([old, revoked], [revoked, old]):
+            result = calculate(events, START, AS_OF)
+            self.assertIsNone(result.kpis['rma_count'].value)
+            self.assertEqual(result.coverage['rma']['state'], 'UNKNOWN')
+
+    def test_later_malformed_coverage_revokes_older_assertion(self):
+        valid = declared('production')
+        old = Observation(valid.source, 'old-coverage', 'source_coverage',
+                          'coverage-one', '2026-10-08T12:00:00+00:00', valid.payload)
+        invalid = Observation(valid.source, 'new-bad-coverage', 'source_coverage',
+                              'coverage-two', '2026-10-08T15:00:00+00:00', {
+                                  'domain': 'production', 'scope': 'reporting_window',
+                                  'complete': True, 'window_start': START,
+                                  'through': None,
+                              })
+        result = calculate([old, invalid], START, AS_OF)
+        self.assertIsNone(result.kpis['scrap_units'].value)
+        self.assertEqual(result.coverage['production']['state'], 'UNKNOWN')
+
+    def test_newer_valid_renewal_restores_zero_with_new_evidence(self):
+        revoked = Observation('report_A', 'old-revocation', 'source_coverage',
+                              'old-state', '2026-10-08T12:00:00+00:00', {
+                                  'domain': 'rma', 'scope': 'reporting_window',
+                                  'window_start': START, 'through': AS_OF,
+                                  'complete': False})
+        renewed = Observation('report_A', 'fresh-coverage', 'source_coverage',
+                              'new-state', '2026-10-08T15:00:00+00:00', {
+                                  'domain': 'rma', 'scope': 'reporting_window',
+                                  'window_start': START, 'through': AS_OF,
+                                  'complete': True})
+        result = calculate([renewed, revoked], START, AS_OF)
+        self.assertEqual(result.kpis['rma_count'].value, '0')
+        self.assertEqual(result.kpis['rma_count'].evidence_ids,
+                         ('report_A:fresh-coverage',))
+
     def test_future_completeness_event_does_not_certify_historical_report(self):
         later = obs('source_coverage', 'future-cover', {
             'domain': 'rma', 'window_start': START, 'through': AS_OF,
