@@ -1,8 +1,13 @@
 name: BEAN Bridge Robot Motion microcontroller emulators
 
+# Drop superseded emulator builds rather than exhausting hosted-runner minutes.
+concurrency:
+  group: bean-robot-motion-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 on:
   push:
-    branches: [experiment/bean-robot-motion-emulators-20261011]
+    branches: [main, experiment/bean-robot-motion-emulators-20261011]
     paths:
       - 'experiments/robot_motion/**'
       - '.github/workflows/bean-robot-motion-emulators.yml'
@@ -12,6 +17,9 @@ on:
       - 'experiments/robot_motion/**'
       - '.github/workflows/bean-robot-motion-emulators.yml'
   workflow_dispatch:
+  # On default-branch only, rerun real MCU emulators once per week.
+  schedule:
+    - cron: '0 8 * * 1'
 
 permissions:
   contents: read
