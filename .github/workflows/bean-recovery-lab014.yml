@@ -1,0 +1,38 @@
+name: BEAN Lab 014 recovery and source repair
+on:
+  push:
+    branches: [experiment/bean-recovery-guard-lab014-20261010]
+  workflow_dispatch:
+
+jobs:
+  recovery:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test runner
+        run: python -m pip install pytest
+      - name: Recovery assertions and falsification
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            export PYTHONPATH="$GITHUB_WORKSPACE;$GITHUB_WORKSPACE/src"
+          else
+            export PYTHONPATH="$GITHUB_WORKSPACE:$GITHUB_WORKSPACE/src"
+          fi
+          python -m compileall -q experiments/broad_improvement tests/test_broad_improvement_lab014.py
+          python -m pytest tests/test_broad_improvement_lab014.py -q
+          python -m experiments.broad_improvement.lab014 --out lab014-report-${{ matrix.os }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab014-recovery-${{ matrix.os }}
+          path: lab014-report-${{ matrix.os }}.json
+          if-no-files-found: warn
