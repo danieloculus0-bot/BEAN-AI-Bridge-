@@ -96,7 +96,7 @@ class EZBeanBridgeTests(unittest.TestCase):
                                   {'due_date': '2026-10-02', 'shipped_date': '2026-10-10'})
         report = calculate([future_ship], START, AS_OF)
         self.assertEqual(report.kpis['past_due_open_jobs'].value, '1')
-        self.assertEqual(report.kpis['shipments_completed'].value, '0')
+        self.assertIsNone(report.kpis['shipments_completed'].value)
 
     def test_no_root_cause_is_invented(self):
         ledger = Ledger()

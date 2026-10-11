@@ -82,10 +82,11 @@ class Report:
     as_of: str
     kpis: dict[str, KPI]
     input_count: int
+    coverage: dict[str, dict[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {'schema_version': '0.1', 'window_start': self.window_start, 'as_of': self.as_of,
-                'input_count': self.input_count,
+        return {'schema_version': '0.2', 'window_start': self.window_start, 'as_of': self.as_of,
+                'input_count': self.input_count, 'source_coverage': self.coverage or {},
                 'kpis': {k: v.to_dict() for k, v in sorted(self.kpis.items())}}
 
 
@@ -152,21 +153,72 @@ def calculate(observations: Iterable[Observation], window_start: str, as_of: str
                 good_total += good
                 scrap_total += scrap
 
-    def ids(rows: list[Observation]) -> tuple[str, ...]:
-        return tuple(sorted(f'{o.source}:{o.event_id}' for o in rows))
+    # Source coverage is *explicitly asserted* by normalized source records. A
+    # handful of observations, even if all found entries are complete, cannot
+    # establish that the source emitted every job/RMA/production record.
+    # The coverage record must match this report's period and as-of instant.
+    # Its source has to cover each source providing the corresponding facts.
+    domains = ('job', 'rma', 'production')
+    contributing_sources = {domain: set() for domain in domains}
+    assertions: dict[str, dict[str, str]] = {domain: {} for domain in domains}
+    for (_, kind, _), entry in entities.items():
+        if kind in contributing_sources:
+            contributing_sources[kind].add(entry.source)
+        elif kind == 'source_coverage':
+            p = entry.payload
+            domain = p.get('domain')
+            if domain not in domains:
+                raise ValueError('Unknown source coverage domain')
+            expected_scope = 'full_snapshot' if domain == 'job' else 'reporting_window'
+            if (p.get('complete') is not True or p.get('scope') != expected_scope
+                    or iso_date(p.get('window_start'), 'coverage.window_start') > start_date
+                    or utc_datetime(p.get('through')) != cutoff):
+                # Incomplete or stale assertions cannot certify a zero.
+                continue
+            assertions[domain][entry.source] = f'{entry.source}:{entry.event_id}'
+
+    coverage = {}
+    for domain in domains:
+        observed = contributing_sources[domain]
+        asserted = assertions[domain]
+        complete = bool(asserted) and observed.issubset(asserted)
+        coverage[domain] = {
+            'state': 'ASSERTED_COMPLETE' if complete else 'UNKNOWN',
+            'assertion_evidence_ids': sorted(asserted.values()) if complete else [],
+            'observed_sources': len(observed),
+            'note': ('Source-asserted completeness only; upstream authority not authenticated'
+                     if complete else 'No matching complete snapshot for every observed source'),
+        }
+
+    def reported_count(rows: list[Observation], domain: str) -> str | None:
+        return str(len(rows)) if rows or coverage[domain]['state'] == 'ASSERTED_COMPLETE' else None
+
+    def reported_total(value: int | Decimal, rows: list[Observation], domain: str) -> str | None:
+        return str(value) if rows or coverage[domain]['state'] == 'ASSERTED_COMPLETE' else None
+
+    def evidence(rows: list[Observation], domain: str) -> tuple[str, ...]:
+        refs = [f'{r.source}:{r.event_id}' for r in rows]
+        if not rows and coverage[domain]['state'] == 'ASSERTED_COMPLETE':
+            refs += coverage[domain]['assertion_evidence_ids']
+        return tuple(sorted(refs))
+
+    def note(domain: str) -> str:
+        return ('Source asserts full coverage; provenance not independently authenticated'
+                if coverage[domain]['state'] == 'ASSERTED_COMPLETE'
+                else 'Observed evidence only; completeness not established, unobserved zeros are N/A')
 
     otd = (Decimal(len(on_time)) * 100 / Decimal(len(completed))).quantize(Decimal('.01'), rounding=ROUND_HALF_UP) if completed else None
     scrap = (Decimal(scrap_total) * 100 / Decimal(good_total + scrap_total)).quantize(Decimal('.01'), rounding=ROUND_HALF_UP) if good_total + scrap_total else None
     kpis = {
-        'otd_percent': KPI('otd_percent', str(otd) if otd is not None else None, '%', ids(completed), 'N/A when no shipments completed in the window; job-based OTD policy'),
-        'shipments_completed': KPI('shipments_completed', str(len(completed)), 'jobs', ids(completed)),
-        'past_due_open_jobs': KPI('past_due_open_jobs', str(len(past_due)), 'jobs', ids(past_due)),
-        'rma_count': KPI('rma_count', str(len(rmas)), 'returns', ids(rmas)),
-        'rma_quantity': KPI('rma_quantity', str(total_rma_qty), 'units', ids(rmas)),
-        'rma_cost': KPI('rma_cost', str(total_rma_cost.quantize(Decimal('.01'))), 'USD', ids(rmas)),
-        'good_units': KPI('good_units', str(good_total), 'units', ids(production)),
-        'scrap_units': KPI('scrap_units', str(scrap_total), 'units', ids(production)),
-        'scrap_percent': KPI('scrap_percent', str(scrap) if scrap is not None else None, '%', ids(production), 'N/A without reported production units'),
+        'otd_percent': KPI('otd_percent', str(otd) if otd is not None else None, '%', evidence(completed, 'job'), 'N/A without a shipment denominator; job-based OTD policy. ' + note('job')),
+        'shipments_completed': KPI('shipments_completed', reported_count(completed, 'job'), 'jobs', evidence(completed, 'job'), note('job')),
+        'past_due_open_jobs': KPI('past_due_open_jobs', reported_count(past_due, 'job'), 'jobs', evidence(past_due, 'job'), note('job')),
+        'rma_count': KPI('rma_count', reported_count(rmas, 'rma'), 'returns', evidence(rmas, 'rma'), note('rma')),
+        'rma_quantity': KPI('rma_quantity', reported_total(total_rma_qty, rmas, 'rma'), 'units', evidence(rmas, 'rma'), note('rma')),
+        'rma_cost': KPI('rma_cost', reported_total(total_rma_cost.quantize(Decimal('.01')), rmas, 'rma'), 'USD', evidence(rmas, 'rma'), note('rma')),
+        'good_units': KPI('good_units', reported_total(good_total, production, 'production'), 'units', evidence(production, 'production'), note('production')),
+        'scrap_units': KPI('scrap_units', reported_total(scrap_total, production, 'production'), 'units', evidence(production, 'production'), note('production')),
+        'scrap_percent': KPI('scrap_percent', str(scrap) if scrap is not None else None, '%', evidence(production, 'production'), 'N/A without reported production units. ' + note('production')),
     }
-    return Report(window_start=window_start, as_of=as_of, kpis=kpis,
+    return Report(window_start=window_start, as_of=as_of, kpis=kpis, coverage=coverage,
                   input_count=sum(utc_datetime(o.observed_at) <= cutoff for o in obs_list))
