@@ -74,8 +74,9 @@ def display_fixture(rows):
     return [asdict(row) for row in rows]
 
 
-def compare_one(rows, start, cutoff, alternative, *, calculator=calculate):
+def compare_one(rows, start, cutoff, alternative, *, calculator=None):
     """Return a machine-verifiable comparison without assuming a repair."""
+    calculator = calculator or calculate
     baseline = calculator(rows, start, cutoff)
     alternate = calculator(rows, start, alternative)
     a = projection(baseline)
