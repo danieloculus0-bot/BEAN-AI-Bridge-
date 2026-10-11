@@ -65,6 +65,12 @@ class AdaptiveLearningTests(unittest.TestCase):
         self.assertEqual(brain.transitions[0]["from"], "broad")
         self.assertEqual(brain.transitions[0]["to"], "baseline")
         self.assertTrue(brain.transitions[0]["evidence_ids"])
+        investigation = brain.transitions[0]["investigation"]
+        self.assertFalse(investigation["causal_proof"])
+        self.assertEqual(investigation["sampling"], "independent_uniform_audits_only")
+        self.assertEqual(len(investigation["feature_checks"]), 4)
+        self.assertTrue(any(x["status"] == "insufficient_evidence"
+                            for x in investigation["feature_checks"]))
         state = json.loads(json.dumps(brain.export_state()))
         recovered = AdaptiveLearner.restore_state(state)
         self.assertEqual(recovered.snapshot(), brain.snapshot())
