@@ -25,6 +25,14 @@ class Ledger:
 
     def _ingest_uncommitted(self, observation: Observation) -> bool:
         """Only called from the owning SQLite transaction."""
+        observation = Observation.from_dict({
+            'source': observation.source,
+            'event_id': observation.event_id,
+            'entity_type': observation.entity_type,
+            'entity_id': observation.entity_id,
+            'observed_at': observation.observed_at,
+            'payload': observation.payload,
+        })
         serialized = json.dumps(observation.payload, sort_keys=True, separators=(',', ':'), allow_nan=False)
         key = (observation.source, observation.event_id)
         old = self.connection.execute('SELECT entity_type, entity_id, observed_at, payload_json FROM observations WHERE source=? AND event_id=?', key).fetchone()
