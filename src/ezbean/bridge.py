@@ -53,10 +53,14 @@ class RuleThinkingModule:
         k = report.kpis
         findings: list[Finding] = []
         if k['otd_percent'].value is None:
-            findings.append(Finding('information', 'No completed shipments in the reporting period; OTD is unavailable.', ()))
-        if int(k['past_due_open_jobs'].value or '0') > 0:
+            findings.append(Finding('information', 'OTD unavailable: no verified observed shipment denominator for this period.', ()))
+        if k['past_due_open_jobs'].value is None:
+            findings.append(Finding('information', 'Past-due open-job count is N/A; full job source coverage is unverified.', ()))
+        elif int(k['past_due_open_jobs'].value) > 0:
             findings.append(Finding('attention', 'Open jobs are past due; review the attached job evidence.', k['past_due_open_jobs'].evidence_ids))
-        if int(k['rma_count'].value or '0') > 0:
+        if k['rma_count'].value is None:
+            findings.append(Finding('information', 'RMA count is N/A; full return source coverage is unverified.', ()))
+        elif int(k['rma_count'].value) > 0:
             findings.append(Finding('review', 'RMA records exist in this period; identify issue themes before assigning a cause.', k['rma_count'].evidence_ids))
         return findings
 

@@ -78,3 +78,7 @@ The generic Bridge includes a separate **offline JobBOSS export sponge**, which 
 ## Optional versioned definition and output gate
 
 The Bridge also provides a **deterministic, local-first versioned definition library** and `OutputGate` that validates a provider's proposed answer against a current, explicitly supplied definition revision. It rejects fabricated reference IDs, stale or retracted definitions, and mismatched canonical values, and abstains when the record is unavailable. Historical as-of lookups remain available. Tests use a fake local provider; **no hosted-model success, independent source authentication, or automatic fact discovery is implied**. External evidence references are assertions supplied by the host and must be verified separately. This optional interface does not globally intercept BEAN's reasoning engine or ERP arithmetic. See [versioned output contract](docs/LAB008_DYNAMIC_DEFINITIONS.md).
+
+## Generic ledger reliability contract
+
+Raw generic normalized KPI events now require an explicit, versioned completeness assertion before an otherwise unobserved count is displayed as zero. Missing data remains `null`/N/A, and batch ingestion is atomic on all-or-nothing conflicts. Source completeness is **asserted by an adapter**, not independently authenticated. The separate JobBOSS reporting adapter has its own coverage and KPI semantics. See [ERP source completeness and transaction contract](docs/ERP_RELIABILITY_CONTRACT.md).
