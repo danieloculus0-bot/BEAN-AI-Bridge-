@@ -18,6 +18,7 @@ REQUIRED_PHASES = {
     "python": ("package_install", "cli_smoke"),
     "iso": ("package_install", "boot_structure", "guest_boot", "first_run"),
     "release": ("package_install", "boot_structure", "guest_boot", "first_run", "persistent_reboot"),
+    "puppy": ("kernel_source_guard", "lean_core_package_boundary", "runtime_overlay", "ram_copy_verified", "persistence_reboot", "external_app_modules"),
 }
 
 
