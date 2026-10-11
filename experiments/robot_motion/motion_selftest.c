@@ -109,5 +109,19 @@ int motion_selftest(void) {
     CHECK(state.pwm==80 && state.ticks==MOTION_TTL_MAX_TICKS);
     CHECK(APPLY(0,0,19,1,1,0));
     CHECK(state.pwm==0 && state.fault==MOTION_OK);
+    /* A reset called while the motor is active must brake on lost link. */
+    CHECK(APPLY(80,3,20,1,1,0));
+    CHECK(!motion_reset(&state,0,1,0));
+    CHECK(state.fault==MOTION_LINK && state.pwm==0 && !state.armed);
+    CHECK(RESET() && ARM());
+    CHECK(APPLY(90,4,21,1,1,0));
+    CHECK(!motion_reset(&state,1,1,1));
+    CHECK(state.fault==MOTION_ESTOP && state.pwm==0);
+    CHECK(RESET() && ARM());
+    CHECK(APPLY(90,4,22,1,1,0));
+    CHECK(!motion_reset(&state,1,0,0));
+    CHECK(state.fault==MOTION_ENCODER && state.pwm==0);
+    CHECK(RESET() && ARM());
+    CHECK(APPLY(0,0,23,1,1,0));
     return 0;
 }
