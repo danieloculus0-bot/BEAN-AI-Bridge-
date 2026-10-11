@@ -38,6 +38,28 @@ class SmokeLabTests(unittest.TestCase):
                             "guest_boot": "skip",
                             "first_run": "pass"})
         self.assertEqual(assess(report, ("package_install", "boot_structure", "guest_boot", "first_run"))["verdict"], "FAIL")
+    def test_puppy_is_fail_closed_when_runtime_is_only_planned(self):
+        from ezbean.smoke_lab import REQUIRED_PHASES
+        self.assertEqual(len(REQUIRED_PHASES["puppy"]), 6)
+        report = {"project": "venvwin", "phase": "puppy", "observed_at": NOW,
+                  "checks": {
+                      "kernel_source_guard": {"status": "pass", "evidence": "git:verified-source-sha"},
+                      "lean_core_package_boundary": {"status": "pass", "evidence": "git:verified-package-lists"},
+                      "runtime_overlay": {"status": "missing", "evidence": ""},
+                      "ram_copy_verified": {"status": "unproven", "evidence": "only-config-present"},
+                      "persistence_reboot": {"status": "missing", "evidence": ""},
+                      "external_app_modules": {"status": "fail", "evidence": "apps-still-in-base"},
+                  }}
+        result = assess(report, REQUIRED_PHASES["puppy"])
+        self.assertEqual(result["verdict"], "FAIL")
+        self.assertEqual(result["passed"], 2)
+        self.assertEqual(result["checks"]["runtime_overlay"]["status"], "missing")
+        self.assertEqual(result["checks"]["ram_copy_verified"]["status"], "unproven")
+        with tempfile.TemporaryDirectory() as d:
+            receipt = evaluate(report, "puppy", Path(d) / "evidence.sqlite", repetitions=5)
+            self.assertEqual(receipt["verdict"], "FAIL")
+            self.assertEqual(receipt["repetitions"], 5)
+
     def test_actual_fail_preserved(self):
         result = assess(self.case({"package_install": "pass", "boot_structure": "fail"}), ("package_install", "boot_structure"))
         self.assertEqual(result["verdict"], "FAIL")
