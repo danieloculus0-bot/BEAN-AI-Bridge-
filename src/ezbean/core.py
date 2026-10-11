@@ -5,7 +5,7 @@ No ERP-specific dependencies. No artificial KPI values.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Iterable
 
@@ -112,7 +112,9 @@ def calculate(observations: Iterable[Observation], window_start: str, as_of: str
     using OTD; do not blindly treat first/partial shipments as completion.
     """
     start_date = iso_date(window_start, 'window_start')
-    cutoff = utc_datetime(as_of)
+    # Generic Bridge reporting dates use UTC; equivalent instants must share
+    # the same calendar cutoff. Site-local business dates require explicit policy.
+    cutoff = utc_datetime(as_of).astimezone(timezone.utc)
     if start_date > cutoff.date():
         raise ValueError('window_start cannot be after as_of')
 
