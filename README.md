@@ -30,6 +30,11 @@ War-room display (a separate future client)
 
 This project intentionally has **no dependency on 64Δ**. It is an independent ERP/KPI logic engine.
 
+
+## JobBOSS spreadsheet sponge (experimental)
+
+The [JobBOSS spreadsheet sponge](docs/JOBBOSS_SPREADSHEET_SPONGE.md) is a local-only, read-only import path for existing Job Schedule CSV, Shipment Summary CSV, and RMA Tracker XLSX files. It captures immutable source snapshots in a local SQLite database, generates shipment-line OTD and overdue job-line metrics, preserves row evidence, and reports RMA counts without inventing missing quantity or costs. No live ERP connection or customer data is committed here. Windows/Linux tests use synthetic fixtures; this is not yet an authoritative production OTD scorecard.
+
 ## Current generic proof of concept
 
 - ERP observation normalization via a common adapter interface.
