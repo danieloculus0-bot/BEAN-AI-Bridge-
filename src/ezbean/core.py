@@ -160,22 +160,38 @@ def calculate(observations: Iterable[Observation], window_start: str, as_of: str
     # Its source has to cover each source providing the corresponding facts.
     domains = ('job', 'rma', 'production')
     contributing_sources = {domain: set() for domain in domains}
-    assertions: dict[str, dict[str, str]] = {domain: {} for domain in domains}
+    # A later revocation/incomplete snapshot must supersede an earlier valid
+    # assertion, even when the producer issues a new entity_id. Do not select
+    # by lexicographic entity ID or silently skip negative revisions.
+    latest_claim: dict[tuple[str, str], Observation] = {}
     for (_, kind, _), entry in entities.items():
         if kind in contributing_sources:
             contributing_sources[kind].add(entry.source)
         elif kind == 'source_coverage':
-            p = entry.payload
-            domain = p.get('domain')
+            domain = entry.payload.get('domain')
             if domain not in domains:
                 raise ValueError('Unknown source coverage domain')
-            expected_scope = 'full_snapshot' if domain == 'job' else 'reporting_window'
-            if (p.get('complete') is not True or p.get('scope') != expected_scope
-                    or iso_date(p.get('window_start'), 'coverage.window_start') > start_date
-                    or utc_datetime(p.get('through')) != cutoff):
-                # Incomplete or stale assertions cannot certify a zero.
-                continue
-            assertions[domain][entry.source] = f'{entry.source}:{entry.event_id}'
+            key = (domain, entry.source)
+            previous = latest_claim.get(key)
+            if previous is None or (
+                utc_datetime(entry.observed_at), entry.event_id
+            ) > (utc_datetime(previous.observed_at), previous.event_id):
+                latest_claim[key] = entry
+
+    assertions: dict[str, dict[str, str]] = {domain: {} for domain in domains}
+    for (domain, source), entry in latest_claim.items():
+        payload = entry.payload
+        required_scope = 'full_snapshot' if domain == 'job' else 'reporting_window'
+        if payload.get('complete') is not True or payload.get('scope') != required_scope:
+            continue
+        try:
+            starts = iso_date(payload.get('window_start'), 'coverage.window_start')
+            through = utc_datetime(payload.get('through'))
+        except (ValueError, TypeError, AttributeError):
+            # A malformed recent claim revokes eligibility for the prior one.
+            continue
+        if starts <= start_date and through == cutoff:
+            assertions[domain][source] = f'{source}:{entry.event_id}'
 
     coverage = {}
     for domain in domains:
