@@ -122,13 +122,24 @@ def ask_model(original, oracle, *, token, model):
     })
     try:
         with request.urlopen(req, timeout=100) as response:
+            content_type = response.headers.get("Content-Type", "missing").split(";")[0]
             payload = response.read(125000)
     except error.HTTPError as exc:
         raise RuntimeError("MODEL_HTTP_" + str(exc.code)) from None
     except (error.URLError, TimeoutError):
         raise RuntimeError("MODEL_TRANSPORT_UNAVAILABLE") from None
+    # Inspect only metadata and the digest; never log model text, HTTP headers
+    # or bearer tokens as part of a failure receipt.
+    safe_type = re.sub(r"[^a-zA-Z0-9/+.=-]", "_", content_type)[:60]
+    if not payload:
+        raise RuntimeError("MODEL_EMPTY_BODY_" + safe_type)
     try:
-        return clean_provider(json.loads(payload)["choices"][0]["message"]["content"])
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        raise RuntimeError("MODEL_NON_JSON_" + safe_type + "_bytes_" + str(len(payload))
+                           + "_sha256_" + hashlib.sha256(payload).hexdigest()[:16]) from None
+    try:
+        return clean_provider(data["choices"][0]["message"]["content"])
     except (IndexError, KeyError, TypeError) as exc:
         raise RuntimeError("MODEL_RESPONSE_INVALID") from exc
 

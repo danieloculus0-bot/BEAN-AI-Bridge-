@@ -125,5 +125,34 @@ class NovelRepairLabTests(unittest.TestCase):
         self.assertEqual(json.loads(receipt.read_text())["result"], "rejected")
 
 
+    def test_empty_provider_response_is_reported_without_token(self):
+        class Reply:
+            headers = {"Content-Type": "application/json"}
+            def __enter__(self):
+                return self
+            def __exit__(self, *_):
+                return False
+            def read(self, *_):
+                return b""
+        with patch.object(lab.request, "urlopen", return_value=Reply()):
+            with self.assertRaisesRegex(RuntimeError, "MODEL_EMPTY_BODY_application/json") as c:
+                lab.ask_model("def f(): pass", "assert True", token="supersecret", model="openai/gpt-4.1")
+        self.assertNotIn("supersecret", str(c.exception))
+
+    def test_nonjson_provider_response_is_classified_without_leaking_body(self):
+        class Reply:
+            headers = {"Content-Type": "text/html; charset=utf-8"}
+            def __enter__(self):
+                return self
+            def __exit__(self, *_):
+                return False
+            def read(self, *_):
+                return b"<html>opaque body should not appear in receipt</html>"
+        with patch.object(lab.request, "urlopen", return_value=Reply()):
+            with self.assertRaisesRegex(RuntimeError, "MODEL_NON_JSON_text/html") as c:
+                lab.ask_model("def f(): pass", "assert True", token="secret", model="openai/gpt-4.1")
+        self.assertNotIn("opaque", str(c.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
