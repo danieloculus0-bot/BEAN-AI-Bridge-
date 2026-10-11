@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: danieloculus0-bot/BEAN
-          ref: 0c4efee6d07f5654bde44331002a10385c829301
+          ref: 12eb4a9c1a371313782733bf841492f8701cb289
           path: bean-core
           persist-credentials: false
       - uses: actions/setup-python@v5
