@@ -1,0 +1,52 @@
+name: BEAN Bridge and Core evidence learning integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/ezbean/learning_loop.py'
+      - 'tests/test_learning_loop_lab009.py'
+      - '.github/workflows/bean-core-evidence-integration.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/ezbean/learning_loop.py'
+      - 'tests/test_learning_loop_lab009.py'
+      - '.github/workflows/bean-core-evidence-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-integrated-core:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src${{ runner.os == 'Windows' && ';' || ':' }}${{ github.workspace }}/bean-core
+    steps:
+      - name: Checkout Bridge under test
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout pinned BEAN Core for reproducibility
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: 57132c6202a7a1891ca354566f466a0b4716a4f8
+          path: bean-core
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Core runtime dependency
+        run: python -m pip install psutil
+      - name: Confirm real Core import, not skipped test
+        run: python -c "import bean; from bean.cognition.uncertainty_garden import UncertaintyGarden; print('BEAN Core import OK')"
+      - name: Run evidence revision tests using actual Core SQLite
+        run: python -m unittest discover -s tests -p test_learning_loop_lab009.py -v
