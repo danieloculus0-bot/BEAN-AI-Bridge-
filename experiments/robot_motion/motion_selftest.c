@@ -1,53 +1,113 @@
 #include "motion_logic.h"
-/* Same adversarial contract executed by host, AVR CPU and ESP32 CPU. */
+/* Identical adversarial contract executes on host, AVR and ESP32 CPUs. */
 #define CHECK(x) do { if (!(x)) return __LINE__; } while (0)
+#define APPLY(p,t,id,l,e,s) motion_apply(&state,(p),(t),(id),(l),(e),(s))
+#define TICK(l,e,s) motion_tick(&state,(l),(e),(s))
+#define RESET() motion_reset(&state,1,1,0)
+#define ARM() motion_arm(&state,1,1,0)
 int motion_selftest(void) {
-    MotionState s;
-    motion_init(&s);
-    CHECK(s.pwm==0 && s.ticks==0 && s.fault==MOTION_OK);
-    CHECK(motion_apply(&s,100,3,1,1,0));
-    CHECK(s.pwm==100 && s.ticks==3);
-    motion_tick(&s);
-    CHECK(s.pwm==100 && s.ticks==2);
-    CHECK(!motion_apply(&s,-90,3,1,1,0));
-    CHECK(s.pwm==0 && s.fault==MOTION_OK);
-    CHECK(motion_apply(&s,-90,3,1,1,0));
-    CHECK(s.pwm==-90);
-    CHECK(!motion_apply(&s,50,2,1,1,1));
-    CHECK(s.pwm==0 && s.fault==MOTION_ESTOP);
-    CHECK(!motion_apply(&s,50,2,1,1,0));
-    CHECK(!motion_reset(&s,1,1,1));
-    CHECK(s.fault==MOTION_ESTOP);
-    CHECK(motion_reset(&s,1,1,0));
-    CHECK(motion_apply(&s,110,2,1,1,0));
-    CHECK(!motion_apply(&s,110,2,0,1,0));
-    CHECK(s.pwm==0 && s.fault==MOTION_LINK);
-    CHECK(!motion_reset(&s,0,1,0));
-    CHECK(motion_reset(&s,1,1,0));
-    CHECK(motion_apply(&s,110,2,1,1,0));
-    CHECK(!motion_apply(&s,110,2,1,0,0));
-    CHECK(s.fault==MOTION_ENCODER && s.pwm==0);
-    CHECK(motion_reset(&s,1,1,0));
-    CHECK(!motion_apply(&s,256,2,1,1,0));
-    CHECK(s.fault==MOTION_INVALID);
-    CHECK(motion_reset(&s,1,1,0));
-    CHECK(!motion_apply(&s,-256,2,1,1,0));
-    CHECK(s.fault==MOTION_INVALID);
-    CHECK(motion_reset(&s,1,1,0));
-    CHECK(!motion_apply(&s,20,0,1,1,0));
-    CHECK(s.fault==MOTION_INVALID);
-    CHECK(motion_reset(&s,1,1,0));
-    CHECK(motion_apply(&s,80,2,1,1,0));
-    motion_tick(&s);
-    CHECK(s.pwm==80 && s.ticks==1);
-    motion_tick(&s);
-    CHECK(s.pwm==0 && s.fault==MOTION_TIMEOUT);
-    CHECK(!motion_apply(&s,70,1,1,1,0));
-    CHECK(motion_reset(&s,1,1,0));
-    CHECK(motion_apply(&s,50,2,1,1,0));
-    CHECK(motion_apply(&s,0,0,1,1,0));
-    CHECK(s.pwm==0 && s.ticks==0);
-    motion_tick(&s);
-    CHECK(s.fault==MOTION_OK);
+    MotionState state;
+    motion_init(&state);
+    CHECK(state.pwm==0 && state.ticks==0 && state.fault==MOTION_OK);
+    CHECK(state.armed==0 && state.seen_seq==0);
+    /* Boot and fault clearing never implicitly arm a motor. */
+    CHECK(!APPLY(90,3,1,1,1,0));
+    CHECK(state.fault==MOTION_UNARMED && state.pwm==0 && state.armed==0);
+    CHECK(RESET());
+    CHECK(state.armed==0 && state.fault==MOTION_OK);
+    CHECK(ARM());
+    CHECK(state.armed==1);
+    CHECK(APPLY(100,3,1,1,1,0));
+    CHECK(state.pwm==100 && state.ticks==3 && state.last_seq==1);
+    TICK(1,1,0);
+    CHECK(state.pwm==100 && state.ticks==2);
+    /* A replay or out-of-order command latches a non-moving fault. */
+    CHECK(!APPLY(150,3,1,1,1,0));
+    CHECK(state.fault==MOTION_SEQUENCE && state.pwm==0 && state.armed==0);
+    CHECK(RESET());
+    CHECK(state.last_seq==1 && state.seen_seq==1 && !state.armed);
+    CHECK(ARM());
+    CHECK(!APPLY(100,3,1,1,1,0));
+    CHECK(state.fault==MOTION_SEQUENCE);
+    CHECK(RESET() && ARM());
+    CHECK(APPLY(90,3,3,1,1,0));
+    CHECK(!APPLY(90,3,2,1,1,0));
+    CHECK(state.pwm==0 && state.fault==MOTION_SEQUENCE);
+    CHECK(RESET() && ARM());
+
+    /* Reversal consumes a fresh command but requires an intervening zero. */
+    CHECK(APPLY(120,5,4,1,1,0));
+    CHECK(!APPLY(-120,5,5,1,1,0));
+    CHECK(state.pwm==0 && state.ticks==0 && state.fault==MOTION_OK);
+    CHECK(state.last_seq==5);
+    CHECK(APPLY(-120,5,6,1,1,0));
+    CHECK(state.pwm==-120);
+    CHECK(APPLY(0,0,7,1,1,0));
+    CHECK(state.pwm==0 && state.ticks==0 && state.fault==MOTION_OK);
+    TICK(1,1,0);
+    CHECK(state.fault==MOTION_OK);
+
+    /* Negative sensor inputs must not be interpreted as true/healthy. */
+    CHECK(APPLY(110,4,8,1,1,0));
+    TICK(-1,1,0);
+    CHECK(state.fault==MOTION_INVALID && state.pwm==0);
+    CHECK(RESET()); /* clearing the fault never re-arms */
+    CHECK(!state.armed && state.fault==MOTION_OK);
+    CHECK(ARM());
+
+    /* Emergency stop takes effect during tick, without a new command. */
+    CHECK(APPLY(100,10,9,1,1,0));
+    TICK(1,1,1);
+    CHECK(state.fault==MOTION_ESTOP && state.pwm==0 && state.armed==0);
+    CHECK(!motion_reset(&state,1,1,1));
+    CHECK(!ARM());
+    CHECK(RESET() && ARM());
+
+    /* Link and encoder loss are sampled on each tick too. */
+    CHECK(APPLY(100,10,10,1,1,0));
+    TICK(0,1,0);
+    CHECK(state.fault==MOTION_LINK && state.pwm==0 && !state.armed);
+    CHECK(!motion_reset(&state,0,1,0));
+    CHECK(RESET() && ARM());
+    CHECK(APPLY(100,10,11,1,1,0));
+    TICK(1,0,0);
+    CHECK(state.fault==MOTION_ENCODER && state.pwm==0);
+    CHECK(!motion_reset(&state,1,0,0));
+    CHECK(RESET() && ARM());
+
+    /* TTL is a logical duration bound; zero does not energize. */
+    CHECK(!APPLY(20,0,12,1,1,0));
+    CHECK(state.fault==MOTION_INVALID && state.pwm==0);
+    CHECK(RESET() && ARM());
+    CHECK(!APPLY(10,MOTION_TTL_MAX_TICKS+1,13,1,1,0));
+    CHECK(state.fault==MOTION_INVALID);
+    CHECK(RESET() && ARM());
+    CHECK(!APPLY(0,1,14,1,1,0));
+    CHECK(state.fault==MOTION_INVALID);
+    CHECK(RESET() && ARM());
+    CHECK(!APPLY(256,2,15,1,1,0));
+    CHECK(state.fault==MOTION_INVALID);
+    CHECK(RESET() && ARM());
+    CHECK(!APPLY(-256,2,16,1,1,0));
+    CHECK(state.fault==MOTION_INVALID);
+    CHECK(RESET() && ARM());
+    CHECK(!APPLY(25,2,0,1,1,0));
+    CHECK(state.fault==MOTION_SEQUENCE);
+    CHECK(RESET() && ARM());
+
+    /* No fresh command means the logical deadman expires, fault latched. */
+    CHECK(APPLY(80,2,17,1,1,0));
+    TICK(1,1,0);
+    CHECK(state.pwm==80 && state.ticks==1);
+    TICK(1,1,0);
+    CHECK(state.pwm==0 && state.ticks==0 && state.fault==MOTION_TIMEOUT);
+    CHECK(!APPLY(80,2,18,1,1,0));
+    CHECK(RESET());
+    CHECK(!state.armed);
+    CHECK(ARM());
+    CHECK(APPLY(80,MOTION_TTL_MAX_TICKS,18,1,1,0));
+    CHECK(state.pwm==80 && state.ticks==MOTION_TTL_MAX_TICKS);
+    CHECK(APPLY(0,0,19,1,1,0));
+    CHECK(state.pwm==0 && state.fault==MOTION_OK);
     return 0;
 }
