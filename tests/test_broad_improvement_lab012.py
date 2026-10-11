@@ -1,5 +1,6 @@
 """Regression tests for honest evaluation, train/holdout isolation and transfer."""
 import unittest
+import importlib.util
 from experiments.broad_improvement.lab012 import (
     BASELINE, DOMAINS, Policy, evaluate, run, scenario, train,
 )
@@ -40,6 +41,8 @@ class BroadImprovementTests(unittest.TestCase):
         self.assertEqual(test['records'], 5 * 12)
         self.assertGreater(test['false_negative'], 0)
 
+    @unittest.skipUnless(importlib.util.find_spec("bean") is not None,
+                         "Core is checked out and required by the dedicated Lab012 workflow")
     def test_core_attends_and_proposals_cannot_execute(self):
         from experiments.broad_improvement.lab012 import core_receipt
         result = core_receipt({'isolated': True})
