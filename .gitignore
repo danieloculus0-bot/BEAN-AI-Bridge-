@@ -1,0 +1,7 @@
+# Python bytecode and tests
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Temporary BEAN agent state and nested checkout
+.bean-agent/
+_bean_core/
