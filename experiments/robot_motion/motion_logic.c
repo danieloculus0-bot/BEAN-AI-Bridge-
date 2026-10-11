@@ -20,7 +20,8 @@ void motion_init(MotionState *s) {
 }
 /* Clearing a fault is NEVER arming. Sequence protection survives reset. */
 int motion_reset(MotionState *s, int link, int encoder, int estop) {
-    if (link!=1 || encoder!=1 || estop!=0) return 0;
+    /* Even a rejected reset must brake immediately on an unhealthy input. */
+    if (!interlocks(s,link,encoder,estop)) return 0;
     s->pwm=0; s->ticks=0; s->fault=MOTION_OK; s->armed=0;
     return 1;
 }
