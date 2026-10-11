@@ -39,7 +39,7 @@ class NovelRepairLabTests(unittest.TestCase):
                 "oracle_sha256": lab.sha((self.challenge/lab.ORACLE).read_text()),
                 "replacement_sha256": lab.sha(self.fixed),
                 "changed_lines": 2,
-                "model": "openai/gpt-4.1",
+                "model": "openai/gpt-4.1", "provider": "github_models",
                 "replacement": self.fixed}
 
     def test_rejects_unchanged_source(self):
@@ -152,6 +152,57 @@ class NovelRepairLabTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "MODEL_NON_JSON_text/html") as c:
                 lab.ask_model("def f(): pass", "assert True", token="secret", model="openai/gpt-4.1")
         self.assertNotIn("opaque", str(c.exception))
+
+
+    def test_fallback_uses_openrouter_only_after_provider_failure(self):
+        with (patch.object(lab, "ask_model", side_effect=RuntimeError("MODEL_NON_JSON_text/plain_bytes_4")),
+              patch.object(lab, "ask_openrouter", return_value=self.fixed) as alt):
+            source, provider = lab.peer_model_draft(
+                self.original, "sealed", token="github-token",
+                model="openai/gpt-4.1", alternate_token="openrouter-token")
+        self.assertEqual((source, provider), (self.fixed, "openrouter"))
+        self.assertEqual(alt.call_count, 1)
+
+    def test_no_false_fallback_when_no_secondary_provider(self):
+        with patch.object(lab, "ask_model", side_effect=RuntimeError("MODEL_NON_JSON_text/plain_bytes_4")):
+            with self.assertRaisesRegex(RuntimeError, "MODEL_NON_JSON"):
+                lab.peer_model_draft(self.original, "sealed", token="github-token",
+                                     model="openai/gpt-4.1", alternate_token="")
+
+    def test_alternate_provider_can_work_without_github_token(self):
+        with patch.object(lab, "ask_openrouter", return_value=self.fixed) as alt:
+            source, provider = lab.peer_model_draft(
+                self.original, "sealed", token="", model="openai/gpt-4.1",
+                alternate_token="openrouter-token")
+        self.assertEqual(provider, "openrouter")
+        self.assertEqual(source, self.fixed)
+        self.assertEqual(alt.call_count, 1)
+
+    def test_api_keys_removed_from_subprocess_test_environment(self):
+        observed = {}
+        def fake_run(args, **kw):
+            observed.update(kw.get("env", {}))
+            return SimpleNamespace(returncode=0, stderr="Ran 1 test", stdout="")
+        with (patch.dict(lab.os.environ, {
+                 "BEAN_MODELS_TOKEN": "token_a", "OPENROUTER_API_KEY": "token_b",
+                 "GITHUB_TOKEN": "token_c", "GH_TOKEN": "token_d"}),
+              patch.object(lab.subprocess, "run", side_effect=fake_run)):
+            lab.suite(self.root)
+        for name in ("BEAN_MODELS_TOKEN", "OPENROUTER_API_KEY", "GITHUB_TOKEN", "GH_TOKEN"):
+            self.assertNotIn(name, observed)
+
+    def test_openrouter_json_source_response_is_real_model_text(self):
+        class Reply:
+            headers = {"Content-Type": "application/json"}
+            def __enter__(self): return self
+            def __exit__(self, *_): return False
+            def read(self, *_):
+                return json.dumps({"choices":[{"message":{"content":"def model_fix():\n    return 42"}}]}).encode()
+        with patch.object(lab.request, "urlopen", return_value=Reply()) as mocked:
+            result = lab.ask_openrouter("def f():pass\n", "assert True", 
+                                        token="fake-only-test", model="openai/gpt-4.1")
+        self.assertEqual(result, "def model_fix():\n    return 42\n")
+        self.assertEqual(mocked.call_count, 1)
 
 
 if __name__ == "__main__":
