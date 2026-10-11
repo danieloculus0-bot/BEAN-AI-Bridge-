@@ -1,0 +1,123 @@
+name: BEAN Weather Chatfield historic as-of trust replay
+
+on:
+  push:
+    branches: [experiment/bean-weather-chatfield-longitudinal-20261011]
+    paths:
+      - 'experiments/weather_chatfield_lab/**'
+      - '.github/workflows/bean-weather-chatfield-backtest.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'experiments/weather_chatfield_lab/**'
+      - '.github/workflows/bean-weather-chatfield-backtest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  anti-leak-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test issuance windows, forecast-causality gate, withheld reference guards
+        run: |
+          python -m compileall -q experiments/weather_chatfield_lab
+          python -m unittest discover -s experiments/weather_chatfield_lab -p 'test_*.py' -v
+
+  asof-forecast-collector:
+    runs-on: ubuntu-latest
+    timeout-minutes: 38
+    needs: anti-leak-unit-tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch ONLY 2015-2024 climatology and original dated archived model runs
+        run: |
+          python -m experiments.weather_chatfield_lab.weather_lab forecast --out evidence/forecaster/predictions.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bean-weather-chatfield-frozen-forecast
+          path: evidence/forecaster/predictions.json
+          if-no-files-found: error
+          retention-days: 90
+
+  actual-weather-custodian:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    needs: anti-leak-unit-tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download 2025-10-11 through 2026-10-05 ERA5 gridded reference
+        run: |
+          python -m experiments.weather_chatfield_lab.weather_lab truth --out evidence/verifier/reference.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bean-weather-chatfield-past-year-reference
+          path: evidence/verifier/reference.json
+          if-no-files-found: error
+          retention-days: 90
+
+  independent-chronological-judge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    needs: [asof-forecast-collector, actual-weather-custodian]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: bean-weather-chatfield-frozen-forecast
+          path: evidence/forecaster/
+      - uses: actions/download-artifact@v4
+        with:
+          name: bean-weather-chatfield-past-year-reference
+          path: evidence/verifier/
+      - name: Verify source receipts, score held-out reference and temporal trust changes
+        run: |
+          python -m experiments.weather_chatfield_lab.weather_lab grade --out evidence/judge/verdict.json
+      - name: Write objective scorecard
+        if: success()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          r=json.load(open("evidence/judge/verdict.json"))
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as f:
+              f.write("## BEAN Weather — Chatfield MN historical backtest\n\n")
+              f.write("Reference: ERA5 gridded reanalysis (not a station thermometer).\n\n")
+              for horizon, sources in r["summary"].items():
+                  f.write("### "+horizon+"-day forecast\n\n")
+                  for name, score in sources.items():
+                      f.write("- "+name+": "+json.dumps(score,sort_keys=True)+"\n")
+              f.write("\nAll reported outcomes are from historical archived data; 30-day model archive unavailable.\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bean-weather-chatfield-chronological-verdict
+          path: evidence/judge/
+          if-no-files-found: error
+          retention-days: 90
