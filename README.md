@@ -18,6 +18,14 @@ This repository is the **generic evidence, ERP reporting and replay integration 
 
 The Bridge's generic KPI functions and synthetic tests are distinct from BEAN's cognition modules. Links between projects do not imply that optional experimental branches have been merged or production integrations deployed.
 
+## Executed growth learning (synthetic Lab010)
+
+The [Growth Learning Bridge lab](experiments/growth_bridge/README.md) uses real online reward updates rather than recording recommended strategies without executing them. Across 300 training episodes the policy learns from simulated portfolio returns, **chooses and executes** long-or-cash exposure from five competing strategies, stores its reward-trained policy, reloads that checkpoint, and grades 100 never-trained mock market seeds against both untrained BEAN and the strongest fixed rule. The executed action ledger, modeled fees and independent Windows/Linux acceptance receipts are preserved.
+
+**Reproduced mock benchmark:** trained +33.43% mean synthetic bankroll return; unchanged untrained policy +4.75%; strongest fixed rule +11.43% (all over the same 100 synthetic trials). The paired bootstrap 95% improvement interval against the strongest fixed baseline was +18.41 to +25.70 percentage points. [See the passing dual-platform run](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/runs/38225147021).
+
+These artificial worlds are deliberately easy. These results do **not** imply profit, real-market generalization, an independently improved learning algorithm, a BEAN Core promotion, or an AIscend live trading change. The module has no wallet or exchange access.
+
 ## Evidence learning loop (opt-in)
 
 The [EvidenceLearningLoop](experiments/learning_loop/README.md) is a reusable, provider-agnostic component that routes rejected or stale model answers to a separately supplied investigator and evidence verifier. It requires corroboration from **at least two distinct verified provenance origins** before creating a new versioned definition, retains conflicting and inconclusive cases, and writes bounded durable cycle records to SQLite.
