@@ -39,4 +39,4 @@ jobs:
       - name: Exercise bridge-to-core graph and learning
         env:
           BEAN_CORE_PATH: ${{ github.workspace }}/_bean_core
-        run: python -m pytest tests/test_cognitive_blocks.py tests/test_audit_learning_failure_records.py tests/test_learning_loop_lab009.py -q -ra
+        run: python -m pytest tests/test_cognitive_blocks.py tests/test_audit_learning_failure_records.py tests/test_audit_module_reload.py tests/test_learning_loop_lab009.py -q -ra
