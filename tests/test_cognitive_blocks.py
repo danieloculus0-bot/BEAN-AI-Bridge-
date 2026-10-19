@@ -139,3 +139,35 @@ def test_core_and_bridge_modules_connect_and_learn_from_outcomes(tmp_path):
     assert recalled["output"]["count"] >= 1
     assert any("synthetic experiment" in x["summary"]
                for x in recalled["output"]["events"])
+
+
+@pytest.mark.skipif(not os.environ.get("BEAN_CORE_PATH"),
+                    reason="A checked-out Core branch is required")
+def test_registered_git_branch_is_pulled_compiled_and_run_only_when_selected(tmp_path):
+    """Git module checkout is lazy and has a revision receipt."""
+    from pathlib import Path
+    import subprocess
+    runner = _bridge(tmp_path)
+    runner.register({
+        "name": "test.git.core.mean_sign",
+        "entrypoint": "bean.modules.builtin:predict_mean_sign",
+        "capabilities": ["remote_binary_forecast"],
+        "source": {
+            "git_url": os.environ["BEAN_CORE_PATH"],
+            "ref": "feature/cognitive-blocks-20261019",
+            "python_root": ".",
+            "module_file": "bean/modules/builtin.py",
+        },
+    })
+    cache = tmp_path / "module_cache"
+    assert runner.available("remote_binary_forecast")[0]["loaded"] is False
+    assert list(cache.glob("*/.git")) == []
+    result = runner.run("remote_binary_forecast", {"history": [4, 3, -2]})
+    assert result["output"]["prediction"] == 1
+    expected_revision = subprocess.check_output(
+        ["git", "-C", os.environ["BEAN_CORE_PATH"], "rev-parse", "HEAD"],
+        text=True,
+    ).strip()
+    assert result["revision"] == expected_revision
+    assert list(cache.glob("*/.git"))
+    assert list(cache.glob("*/bean/modules/__pycache__/builtin.*.pyc"))
