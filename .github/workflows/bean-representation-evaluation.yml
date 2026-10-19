@@ -1,0 +1,66 @@
+name: BEAN representation and transport evaluation
+
+on:
+  push:
+    branches: [experiment/representation-fidelity-20261019]
+  pull_request:
+    branches: [test/engine-firing-sweep-20261019]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format-fidelity:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      BEAN_CORE_PATH: ${{ github.workspace }}/_bean_core
+      PYTHONPATH: src
+    steps:
+      - name: Checkout Bridge format experiment
+        uses: actions/checkout@v4
+      - name: Checkout exact Core format experiment
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: experiment/representation-fidelity-20261019
+          path: _bean_core
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test dependencies and optional format benchmark only
+        run: python -m pip install pytest psutil msgpack
+      - name: Compile Core and Bridge
+        run: python -m compileall -q src/ezbean _bean_core/bean experiments/representation_sweep
+      - name: Check original Core semantics and new strict JSON fidelity
+        run: python -m pytest _bean_core/bean/tests/test_representation_fidelity.py _bean_core/bean/tests/test_engine_firing_sweep.py -q -ra
+      - name: Test existing Bridge contract and cross-repository transport feedback
+        run: python -m pytest tests/test_representation_fidelity.py tests/test_engine_bus_sweep.py tests/test_cognitive_blocks.py tests/test_audit_module_reload.py -q -ra
+      - name: Run existing complete Bridge regression
+        run: python -m unittest discover -s tests -v
+      - name: Benchmark without replacing any production serializer
+        run: python -m experiments.representation_sweep.benchmark --out format-evidence.json --loops 150
+      - name: Print measured timing and encoded size comparisons
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open("format-evidence.json",encoding="utf-8"))
+          for r in d["results"]:
+              print(f'FORMAT_RESULT dataset={r["dataset"]} format={r["format"]} bytes={r["encoded_bytes"]} encode_us={r["encode_us_median"]} decode_us={r["decode_us_median"]} roundtrip={r["roundtrip_ok"]}')
+          assert all(x["roundtrip_ok"] for x in d["results"])
+          assert not d["changes_runtime_format"]
+          PY
+      - name: Upload synthetic benchmark evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-format-evidence-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: format-evidence.json
+          retention-days: 14
+          if-no-files-found: error
