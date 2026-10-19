@@ -21,7 +21,38 @@ class CognitiveDispatcher:
         self.modules = modules
 
     @staticmethod
-    def _experiment_questions():
+    def _attempt_index() -> dict[int, set[str]]:
+        """Read experiment history once per cognition tick, not once per question."""
+        from bean.memory.store import get_store
+
+        index: dict[int, set[str]] = {}
+        rows = get_store().fetchall(
+            "SELECT data FROM events WHERE subtype IN "
+            "('cognitive_module_experiment', 'cognitive_module_failure') "
+            "ORDER BY id"
+        )
+        for row in rows:
+            try:
+                info = json.loads(row["data"] or "{}")
+            except (TypeError, ValueError):
+                continue
+            if (isinstance(info, dict)
+                    and type(info.get("question_id")) is int
+                    and isinstance(info.get("block"), str)):
+                index.setdefault(info["question_id"], set()).add(info["block"])
+        return index
+
+    def _remaining_methods(
+        self, question_id: int, capability: str,
+        attempt_index: dict[int, set[str]],
+    ) -> list[str]:
+        tried = attempt_index.get(question_id, set())
+        return [
+            entry["name"] for entry in self.modules.available(capability)
+            if entry["name"] not in tried
+        ]
+
+    def _experiment_questions(self, attempt_index: dict[int, set[str]]):
         from bean.memory.store import get_store
 
         rows = get_store().fetchall(
@@ -40,7 +71,8 @@ class CognitiveDispatcher:
                 and isinstance(spec.get("inputs"), dict)
                 and isinstance(spec.get("expected_output"), dict)
             ):
-                eligible.append(dict(row))
+                if self._remaining_methods(row["id"], spec["capability"], attempt_index):
+                    eligible.append(dict(row))
         return eligible
 
     def poll(self, session_uuid: str, *, max_goals: int = 1) -> list[dict]:
@@ -55,7 +87,8 @@ class CognitiveDispatcher:
         from bean.memory.store import get_store
 
         goal_engine = GoalStateEngine()
-        questions = self._experiment_questions()
+        attempts = self._attempt_index()
+        questions = self._experiment_questions(attempts)
         if questions:
             goal_engine.propose(session_uuid, [], questions)
 
@@ -74,15 +107,26 @@ class CognitiveDispatcher:
                 goal_engine.complete(goal.proposal_id, "Question already resolved")
                 continue
             capability = detail["capability"]
+            remaining = self._remaining_methods(question_id, capability, attempts)
+            if not remaining:
+                goal_engine.complete(goal.proposal_id, "Current methods already attempted")
+                continue
+            rng = random.Random(question_id + len(results))
+            preferred = self.modules.choose(capability, explore=True, rng=rng).name
+            block_name = (preferred if preferred in remaining else
+                          max(remaining, key=lambda name:
+                              self.modules.preference(capability, name)[1]))
             try:
                 trial = self.modules.run(
-                    capability, detail["inputs"], explore=True,
-                    rng=random.Random(question_id + len(results)),
+                    capability, detail["inputs"], block_name=block_name,
                     context={"session_uuid": session_uuid},
                 )
                 actual = trial["output"]
                 expected = detail["expected_output"]
-                matched = all(actual.get(k) == v for k, v in expected.items())
+                matched = bool(expected) and all(
+                    key in actual and actual[key] == value
+                    for key, value in expected.items()
+                )
                 reward = 1.0 if matched else -1.0
                 preference = self.modules.feedback(trial["run_id"], reward)
                 outcome = {
@@ -105,15 +149,23 @@ class CognitiveDispatcher:
                     f"{json.dumps(expected, sort_keys=True)}; "
                     f"match={matched}. A single trial does not prove generalization."
                 )
-                log_event(
-                    session_uuid, EventType.FACT_LEARNED,
-                    f"Observed result for question {question_id}.",
-                    Source.SYSTEM, subtype="experiment_result",
-                    data={"question_id": question_id, "answer": answer,
-                          "run_id": trial["run_id"]},
+                if matched:
+                    # Only an observed match answers this specific experiment.
+                    # A mismatch is data for the NEXT attempt, not knowledge
+                    # that the question has been resolved.
+                    log_event(
+                        session_uuid, EventType.FACT_LEARNED,
+                        f"Observed match for question {question_id}.",
+                        Source.SYSTEM, subtype="experiment_result",
+                        data={"question_id": question_id, "answer": answer,
+                              "run_id": trial["run_id"]},
+                    )
+                    ConsolidationEngine()._close_resolved_questions(session_uuid)
+                goal_engine.complete(
+                    goal.proposal_id,
+                    ("Observed match: " if matched else "Observed mismatch: ")
+                    + trial["run_id"],
                 )
-                ConsolidationEngine()._close_resolved_questions(session_uuid)
-                goal_engine.complete(goal.proposal_id, "Observed trial: " + trial["run_id"])
                 results.append(outcome)
             except Exception as exc:
                 # BlockRuntime independently records module errors and negative
@@ -123,7 +175,8 @@ class CognitiveDispatcher:
                     f"Experimental module for {capability} failed: {exc}",
                     Source.SYSTEM, subtype="cognitive_module_failure",
                     data={"question_id": question_id, "goal_id": goal.proposal_id,
-                          "capability": capability, "error_type": type(exc).__name__},
+                          "capability": capability, "block": block_name,
+                          "error_type": type(exc).__name__},
                 )
                 goal_engine.complete(goal.proposal_id, f"Trial failed: {type(exc).__name__}")
                 results.append({

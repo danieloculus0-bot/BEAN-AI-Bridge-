@@ -2,7 +2,7 @@ name: BEAN Connected Cognition and Learning
 
 on:
   push:
-    branches: [feature/cognitive-blocks-20261019, fix/audit-learning-reliability-20261019, feature/connected-cognition-20261019]
+    branches: [feature/cognitive-blocks-20261019, fix/audit-learning-reliability-20261019, feature/connected-cognition-20261019, fix/cognition-audit-sweep-20261019]
   pull_request:
     branches: [main]
   workflow_dispatch:
