@@ -1,0 +1,114 @@
+name: BEAN 5-of-10 pilot readiness gate
+
+on:
+  push:
+    branches: [feature/pilot-readiness-five-20261019]
+  pull_request:
+    branches: [feature/cloud-pilot-rehearsal-20261019]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  operator-install-and-replay:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Package and install the actual wheel
+        shell: bash
+        run: |
+          python -m pip install build pytest psutil
+          python -m build --wheel --outdir dist
+          python - <<'PY'
+          import glob, subprocess, sys
+          wheels=glob.glob('dist/*.whl')
+          assert len(wheels)==1, wheels
+          subprocess.run([sys.executable,'-m','pip','install','--force-reinstall',wheels[0]],check=True)
+          PY
+      - name: Run installed CLI from temporary directory outside source checkout
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import subprocess
+          import tempfile
+          with tempfile.TemporaryDirectory(prefix='bean-operator-') as temp:
+              out=Path(temp)/'reports'/'today.html'
+              result=subprocess.run(
+                  ['bean-run','--demo','--out',str(out)],
+                  cwd=temp, check=True, text=True, capture_output=True)
+              import json
+              receipt=json.loads(result.stdout)
+              assert receipt['synthetic'] is True
+              assert receipt['actual_business_validation'] is False
+              assert len(receipt['source_status']) == 3
+              assert out.is_file()
+              assert out.with_suffix('.json').is_file()
+              assert out.with_suffix('.receipt.json').is_file()
+              # Re-run exactly as a real operator would, reusing the local DB.
+              again=subprocess.run(['bean-run','--demo','--out',str(out)],
+                  cwd=temp, check=True, text=True, capture_output=True)
+              more=json.loads(again.stdout)
+              assert receipt['json_sha256'] == more['json_sha256']
+              assert all(r['status']=='duplicate' for r in more['source_status'])
+              diagnosis=subprocess.run(['bean-doctor','--database',str(out.parent/'synthetic-ledger.sqlite')],
+                  cwd=temp, check=True, text=True, capture_output=True)
+              status=json.loads(diagnosis.stdout)
+              assert status['database']['state']=='pass',status
+              assert not status['production_certified']
+              print('installed_operator_demo=PASS output_sha256='+receipt['json_sha256'])
+          PY
+      - name: Install beta fully offline in a fresh isolated virtual environment
+        shell: bash
+        run: |
+          python - <<'PY'
+          import glob
+          import json
+          import pathlib
+          import subprocess
+          import sys
+          import tempfile
+          wheels=glob.glob('dist/*.whl')
+          assert len(wheels)==1
+          script=(pathlib.Path.cwd()/'scripts'/'install_beta.py').resolve()
+          with tempfile.TemporaryDirectory(prefix='bean-offline-install-') as home:
+              result=subprocess.run([
+                  sys.executable,str(script),'--wheel',
+                  str(pathlib.Path(wheels[0]).resolve()),
+                  '--home',str(pathlib.Path(home)/'BEAN-Operations')
+              ],check=True,capture_output=True,text=True)
+              report=json.loads(result.stdout)
+              assert report['install_status']=='PASS'
+              assert report['offline_wheel_install']
+              assert report['fictional_smoke_test']
+              print('offline_install=PASS')
+          PY
+      - name: Run BEAN Operations unit and edge-case tests
+        run: python -m pytest tests/test_doctor.py tests/test_operations_run.py tests/test_backup.py tests/test_pilot.py tests/test_jobboss_exports.py tests/test_daily_brief.py tests/test_management_intelligence.py -q -ra
+      - name: Run full Bridge regression suite
+        run: python -m unittest discover -s tests -v
+      - name: Rehearse ten synthetic workdays and verify reproducibility
+        run: python -m experiments.cloud_operations_rehearsal.run --out cloud-rehearsal-evidence
+      - name: Publish fictional software-evidence artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-operator-ready-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            dist/*.whl
+            cloud-rehearsal-evidence/*.json
+            cloud-rehearsal-evidence/*.html
+          if-no-files-found: error
+          retention-days: 14
