@@ -24,11 +24,19 @@ except ImportError:
     msgpack = None
 
 
-def _canonical(value):
+def _encode_json(value, *, canonical: bool):
     return json.dumps(
         value, allow_nan=False, ensure_ascii=False,
-        sort_keys=True, separators=(",", ":")
+        sort_keys=canonical, separators=(",", ":")
     ).encode("utf-8")
+
+
+def _canonical(value):
+    return _encode_json(value, canonical=True)
+
+
+def _compact(value):
+    return _encode_json(value, canonical=False)
 
 
 def fixtures() -> dict:
@@ -99,13 +107,16 @@ def run(*, loops: int = 100) -> dict:
         raise ValueError("loops outside experiment range")
     rows = []
     for name, value in fixtures().items():
+        strict_decode = lambda raw: json.loads(
+            raw.decode("utf-8"),
+            parse_constant=lambda x: (_ for _ in ()).throw(
+                ValueError("non-standard JSON constant " + x)),
+        )
         rows.append(_trial(
-            name, value, "json_compact", _canonical,
-            lambda raw: json.loads(
-                raw.decode("utf-8"),
-                parse_constant=lambda x: (_ for _ in ()).throw(
-                    ValueError("non-standard JSON constant " + x)),
-            ), loops,
+            name, value, "json_compact", _compact, strict_decode, loops,
+        ))
+        rows.append(_trial(
+            name, value, "json_canonical", _canonical, strict_decode, loops,
         ))
         if msgpack:
             rows.append(_trial(
