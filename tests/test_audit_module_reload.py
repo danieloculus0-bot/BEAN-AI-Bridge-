@@ -58,3 +58,47 @@ def test_explicit_refresh_reloads_changed_source(tmp_path):
     # Existing callable stays loaded until BEAN requests an update.
     assert runner.run("logic", {})["output"]["value"] == 1
     assert runner.run("logic", {}, refresh=True)["output"]["value"] == 2
+
+
+def test_failed_module_updates_future_choice_and_survives_restart(tmp_path):
+    broken, capable = tmp_path / "broken", tmp_path / "capable"
+    broken.mkdir()
+    capable.mkdir()
+    (broken / "logic.py").write_text(
+        'def run(data, context):\n    raise RuntimeError("experiment failed")\n',
+        encoding="utf-8",
+    )
+    (capable / "logic.py").write_text(
+        'def run(data, context):\n    return {"answer": 21}\n',
+        encoding="utf-8",
+    )
+
+    def register(runner):
+        for name, root in (("broken", broken), ("capable", capable)):
+            runner.register({
+                "name": name,
+                "entrypoint": "logic:run",
+                "capabilities": ["discover"],
+                "source": {"local_root": str(root), "module_file": "logic.py"},
+            })
+
+    from pytest import raises
+    path = tmp_path / "experiment.sqlite"
+    runner = BlockRuntime(db_path=path, cache_dir=tmp_path / "cache")
+    register(runner)
+    assert runner.choose("discover").name == "broken"
+    with raises(RuntimeError, match="experiment failed"):
+        runner.run("discover", {})
+    assert runner.preference("discover", "broken") == (1, -1.0)
+    receipt = runner.conn.execute(
+        "SELECT execution_status, error_summary, feedback "
+        "FROM cognitive_block_runs").fetchone()
+    assert receipt[0] == "error"
+    assert "experiment failed" in receipt[1]
+    assert receipt[2] == -1.0
+    runner.conn.close()
+
+    restarted = BlockRuntime(db_path=path, cache_dir=tmp_path / "cache")
+    register(restarted)
+    assert restarted.choose("discover").name == "capable"
+    assert restarted.run("discover", {})["output"]["answer"] == 21
