@@ -188,6 +188,9 @@ def test_runnable_end_to_end_demo_reports_actual_method_experience(tmp_path):
     assert len(results["trials"]) == 4
     assert sum(results["bridge_visits"].values()) == 4
     assert results["core_answered"] == 4
+    assert results["holdout"] == {
+        "cases": 4, "cold_correct": 0, "learned_correct": 4,
+    }
     assert results["learned_preference"] in ("bean.mean_sign", "bean.last_sign")
     assert (tmp_path / "demo" / "core.sqlite").exists()
     assert (tmp_path / "demo" / "bridge.sqlite").exists()
