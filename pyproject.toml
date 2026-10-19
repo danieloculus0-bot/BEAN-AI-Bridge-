@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bean-ai-bridge"
-version = "0.1.0b1"
+version = "0.1.0b2"
 description = "BEAN offline operational evidence and experimental logic-module bridge"
 readme = "README.md"
 requires-python = ">=3.10"
