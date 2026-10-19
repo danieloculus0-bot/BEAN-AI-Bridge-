@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bean-ai-bridge"
+version = "0.1.0b1"
+description = "BEAN offline operational evidence and experimental logic-module bridge"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+# License is intentionally not asserted here: the project owner must choose
+# distribution and commercial terms before publishing to a package index.
+dependencies = []
+
+[project.scripts]
+bean-export = "ezbean.jobboss_exports:main"
+bean-brief = "ezbean.daily_brief:main"
+bean-pilot = "ezbean.pilot:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ezbean*"]
