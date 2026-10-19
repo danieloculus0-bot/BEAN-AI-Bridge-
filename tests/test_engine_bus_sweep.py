@@ -22,6 +22,10 @@ from ezbean.modules.catalog import register_bridge, register_core
                     reason="Provide a checkout of the actual Core engine-sweep branch")
 def test_engine_firing_end_to_end_across_two_repos_and_reboot(tmp_path):
     core_path = os.environ["BEAN_CORE_PATH"]
+    # The actual host has Core installed/available; the Bridge CI checkout
+    # is a sibling repository, so make that package root importable here.
+    if core_path not in sys.path:
+        sys.path.insert(0, core_path)
     from bean.memory.store import init_store, get_store
     from bean.memory.identity import bootstrap_identity
     from bean.memory.session import begin_session, get_continuity_context
