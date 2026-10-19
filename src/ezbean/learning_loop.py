@@ -18,6 +18,7 @@ import math
 import sqlite3
 import uuid
 from dataclasses import asdict, dataclass
+from itertools import islice
 from typing import Protocol, Sequence
 
 from .knowledge_gate import DefinitionLibrary, OutputGate, utc_stamp
@@ -104,6 +105,39 @@ class EvidenceLearningLoop:
             return {"accepted": False, "reason": "provider_error",
                     "error": f"{type(exc).__name__}: {str(exc)[:250]}", "output": None}
 
+    def _failed_cycle(self, *, cycle_id: str, concept: str, timestamp: str,
+                      initial: dict, status: str, observations: list[dict],
+                      verified_by_origin: dict, exc: Exception) -> None:
+        """Remember an interrupted experiment without silently dropping it.
+
+        The exception still reaches the caller. The durable partial episode
+        becomes feedback for debugging and subsequent reasoning experiments.
+        """
+        observations.append({
+            "status": "experiment_exception", "error_type": type(exc).__name__,
+            "message": str(exc)[:250],
+        })
+        outcome = LearningOutcome(
+            cycle_id=cycle_id, concept=concept, initial_status=status,
+            investigation_status="investigation_error",
+            confirmed_sources=sum(x.get("verified") is True for x in observations),
+            distinct_origins=len(verified_by_origin),
+            definition_id=None, system_answer=None,
+            model_accepted=bool(initial.get("accepted")),
+            result_status="experiment_error", evidence_refs=(),
+        )
+        self.library.db.execute(
+            "INSERT INTO learning_cycles(id, concept, as_of_utc, initial_json, observations_json, outcome_json) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (cycle_id, concept, timestamp, json.dumps(initial, default=str),
+             json.dumps(observations), json.dumps(asdict(outcome))),
+        )
+        self.library.db.commit()
+        self._record("cycle_error", concept, {
+            "cycle_id": cycle_id, "error_type": type(exc).__name__,
+            "observations_recorded": len(observations),
+        })
+
     def process(self, provider, concept: str, as_of: str, *, refresh: bool = False) -> LearningOutcome:
         """One bounded attempt; subsequent calls can revise anything learned.
 
@@ -131,29 +165,38 @@ class EvidenceLearningLoop:
                 "model_result": initial.get("reason"),
             })
             investigation_status = "insufficient_verified_evidence"
-            # Source retrieval is host-provided and independently metered.
-            candidates = list(self.investigator.investigate(concept, question))[:self.max_sources]
-            seen_refs: set[str] = set()
-            for candidate in candidates:
-                if not isinstance(candidate, SourceObservation):
-                    raise TypeError("investigator returned an untyped source")
-                if candidate.ref in seen_refs:
-                    observations.append({"ref": candidate.ref, "origin": candidate.origin,
-                                         "status": "duplicate_reference"})
-                    continue
-                seen_refs.add(candidate.ref)
-                verified = self.verifier.check(concept, candidate)
-                if not isinstance(verified, bool):
-                    raise TypeError("evidence verifier must return bool")
-                result = {"ref": candidate.ref, "origin": candidate.origin,
-                          "value": candidate.value, "verified": verified}
-                observations.append(result)
-                if verified:
-                    old = verified_by_origin.get(candidate.origin)
-                    if old is not None and old.value != candidate.value:
-                        investigation_status = "conflicting_same_origin"
-                    else:
-                        verified_by_origin.setdefault(candidate.origin, candidate)
+            try:
+                # Source retrieval is host-provided and independently metered.
+                candidates = list(islice(iter(self.investigator.investigate(concept, question)), self.max_sources))
+                seen_refs: set[str] = set()
+                for candidate in candidates:
+                    if not isinstance(candidate, SourceObservation):
+                        raise TypeError("investigator returned an untyped source")
+                    if candidate.ref in seen_refs:
+                        observations.append({"ref": candidate.ref, "origin": candidate.origin,
+                                             "status": "duplicate_reference"})
+                        continue
+                    seen_refs.add(candidate.ref)
+                    verified = self.verifier.check(concept, candidate)
+                    if not isinstance(verified, bool):
+                        raise TypeError("evidence verifier must return bool")
+                    result = {"ref": candidate.ref, "origin": candidate.origin,
+                              "value": candidate.value, "verified": verified}
+                    observations.append(result)
+                    if verified:
+                        old = verified_by_origin.get(candidate.origin)
+                        if old is not None and old.value != candidate.value:
+                            investigation_status = "conflicting_same_origin"
+                        else:
+                            verified_by_origin.setdefault(candidate.origin, candidate)
+    
+            except Exception as exc:
+                self._failed_cycle(
+                    cycle_id=cycle_id, concept=concept, timestamp=timestamp,
+                    initial=initial, status=status, observations=observations,
+                    verified_by_origin=verified_by_origin, exc=exc,
+                )
+                raise
 
             values = {source.value for source in verified_by_origin.values()}
             if investigation_status == "conflicting_same_origin" or len(values) > 1:
