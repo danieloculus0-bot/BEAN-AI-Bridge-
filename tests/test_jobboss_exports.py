@@ -105,6 +105,27 @@ class JobBossSpongeTests(unittest.TestCase):
         self.assertIsNone(k["rma_quantity"])
         self.assertIsNone(k["rma_cost_usd"])
         self.assertEqual(result["rma_reason_counts"],{"Dimensional":1})
+    def test_optional_rma_reason_column_does_not_hide_valid_occurrences(self):
+        from datetime import date
+        path = self.root / "RMA_Tracker(20261019-120000).xlsx"
+        serial = (date(2026, 10, 14) - date(1899, 12, 30)).days
+        fields = [x for x in RMA_FIELDS if x != "Reason Code"]
+        write_xlsx(path, [
+            fields,
+            [serial, "J1", "Synthetic Co", "Weld", "", "Surface issue"],
+            [serial, "J2", "Synthetic Co", "Powder", "", "Other note"],
+        ])
+        self.assertEqual(self.store.ingest(path)["status"], "imported")
+        results = self.store.report("2026-10-01", "2026-10-19T12:01:00Z")
+        self.assertEqual(results["metrics"]["rma_entries"], 2)
+        self.assertEqual(results["metrics"]["rma_missing_reason_entries"], 2)
+        from ezbean.management_intelligence import analyze_site
+        summarized = analyze_site("SITE_A", results)
+        self.assertEqual(summarized["metrics"]["rma_observed"]["value"], 2)
+        self.assertNotIn(
+            "RMA_REASON_MISSING", {item["code"] for item in summarized["gaps"]}
+        )
+
     def test_without_rma_export_is_unknown_not_zero(self):
         self.store.ingest(self.job())
         result=self.store.report("2026-09-01","2026-10-01T00:00:00Z")
