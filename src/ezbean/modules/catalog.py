@@ -13,6 +13,12 @@ def register_core(runtime, *, local_root: str | None = None,
                   ref: str = "feature/cognitive-blocks-20261019"):
     """Make native BEAN cognition available without making Core depend on Bridge."""
     blocks = [
+        ("bean.observe_experiment", "observe_experiment", ("observe_experiment",),
+         "Turn structured observations into open BEAN curiosity questions"),
+        ("bean.drive_evaluation", "evaluate_drives", ("drive_evaluation",),
+         "Calculate BEAN's native cognitive drive states"),
+        ("bean.reasoning", "reason_about", ("reasoning",),
+         "Use the native BEAN local model reasoning engine"),
         ("bean.numeric_context", "numeric_context", ("data_analysis", "numeric_context"),
          "Analyze an observed numeric series"),
         ("bean.last_sign", "predict_last_sign", ("binary_forecast",),
