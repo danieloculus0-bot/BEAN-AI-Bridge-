@@ -20,40 +20,39 @@ class CognitiveDispatcher:
     def __init__(self, modules: BlockRuntime):
         self.modules = modules
 
-    def _tried_modules(self, question_id: int) -> set[str]:
-        """Find attempts from durable Core events, including failed modules.
-
-        A single wrong result is not an answered question. If every currently
-        installed method has been tested, the question stays open for future
-        modules rather than replaying the same unsuccessful method forever.
-        """
+    @staticmethod
+    def _attempt_index() -> dict[int, set[str]]:
+        """Read experiment history once per cognition tick, not once per question."""
         from bean.memory.store import get_store
 
+        index: dict[int, set[str]] = {}
         rows = get_store().fetchall(
             "SELECT data FROM events WHERE subtype IN "
             "('cognitive_module_experiment', 'cognitive_module_failure') "
             "ORDER BY id"
         )
-        tried: set[str] = set()
         for row in rows:
             try:
                 info = json.loads(row["data"] or "{}")
             except (TypeError, ValueError):
                 continue
             if (isinstance(info, dict)
-                    and info.get("question_id") == question_id
+                    and type(info.get("question_id")) is int
                     and isinstance(info.get("block"), str)):
-                tried.add(info["block"])
-        return tried
+                index.setdefault(info["question_id"], set()).add(info["block"])
+        return index
 
-    def _remaining_methods(self, question_id: int, capability: str) -> list[str]:
-        tried = self._tried_modules(question_id)
+    def _remaining_methods(
+        self, question_id: int, capability: str,
+        attempt_index: dict[int, set[str]],
+    ) -> list[str]:
+        tried = attempt_index.get(question_id, set())
         return [
             entry["name"] for entry in self.modules.available(capability)
             if entry["name"] not in tried
         ]
 
-    def _experiment_questions(self):
+    def _experiment_questions(self, attempt_index: dict[int, set[str]]):
         from bean.memory.store import get_store
 
         rows = get_store().fetchall(
@@ -72,7 +71,7 @@ class CognitiveDispatcher:
                 and isinstance(spec.get("inputs"), dict)
                 and isinstance(spec.get("expected_output"), dict)
             ):
-                if self._remaining_methods(row["id"], spec["capability"]):
+                if self._remaining_methods(row["id"], spec["capability"], attempt_index):
                     eligible.append(dict(row))
         return eligible
 
@@ -88,7 +87,8 @@ class CognitiveDispatcher:
         from bean.memory.store import get_store
 
         goal_engine = GoalStateEngine()
-        questions = self._experiment_questions()
+        attempts = self._attempt_index()
+        questions = self._experiment_questions(attempts)
         if questions:
             goal_engine.propose(session_uuid, [], questions)
 
@@ -107,7 +107,7 @@ class CognitiveDispatcher:
                 goal_engine.complete(goal.proposal_id, "Question already resolved")
                 continue
             capability = detail["capability"]
-            remaining = self._remaining_methods(question_id, capability)
+            remaining = self._remaining_methods(question_id, capability, attempts)
             if not remaining:
                 goal_engine.complete(goal.proposal_id, "Current methods already attempted")
                 continue
