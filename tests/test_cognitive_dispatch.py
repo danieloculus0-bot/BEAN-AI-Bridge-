@@ -200,7 +200,9 @@ def test_runnable_end_to_end_demo_reports_actual_method_experience(tmp_path):
     from examples.connected_cognition import run
     results = run(core_root=os.environ["BEAN_CORE_PATH"],
                   data_dir=tmp_path / "demo")
-    assert len(results["trials"]) == 4
+    assert len(results["trials"]) >= 4
+    assert all(item["matched"] for item in results["trials"] if item["method"] == "bean.mean_sign")
+    assert any(not item["matched"] for item in results["trials"])
     assert sum(results["bridge_visits"].values()) >= 4
     assert results["core_answered"] == 4
     assert results["holdout"] == {
