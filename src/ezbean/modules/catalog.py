@@ -10,7 +10,7 @@ CORE_URL = "https://github.com/danieloculus0-bot/BEAN.git"
 
 
 def register_core(runtime, *, local_root: str | None = None,
-                  ref: str = "feature/cognitive-blocks-20261019"):
+                  ref: str = "feature/connected-cognition-20261019"):
     """Make native BEAN cognition available without making Core depend on Bridge."""
     blocks = [
         ("bean.observe_experiment", "observe_experiment", ("observe_experiment",),
