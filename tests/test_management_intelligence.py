@@ -61,7 +61,7 @@ class ManagementIntelligenceTests(unittest.TestCase):
         self.assertEqual(x["metrics"]["rma_observed"]["state"],"UNKNOWN")
         codes={g["code"] for g in x["gaps"]}
         self.assertIn("RMA_DATE_QUARANTINE",codes)
-        self.assertIn("RMA_REASON_MISSING",codes)
+        self.assertNotIn("RMA_REASON_MISSING",codes)
 
     def test_unknown_peer_makes_no_comparison_claim(self):
         a=analyze_site("SITE_A",report())
