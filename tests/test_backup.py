@@ -35,7 +35,7 @@ class BackupTests(unittest.TestCase):
             )
         self.connection.execute("INSERT INTO events(note) VALUES ('later')")
         self.connection.commit()
-        with sqlite3.connect(str(output)) as copied:
+        with closing(sqlite3.connect(str(output))) as copied:
             self.assertEqual(copied.execute("SELECT COUNT(*) FROM events").fetchone()[0], 1)
 
     def test_existing_snapshot_refused_without_overwrite(self):
