@@ -6,6 +6,19 @@ EZ-BEAN is the planned EZ Fabricating ERP-linked KPI development and operational
 
 This repository is a **public-safe, generic implementation and smoke-test path** for that architecture. It has no live connection to EZ Fab ERP systems and contains **synthetic data only**. It is **not** the ERP production connector, nor a deployed real-time dashboard.
 
+## Commercial pilot track — separate from BEAN cognition research
+
+A deliberately narrower **local operations evidence brief** is being
+packaged as an installable beta, with a ten-workday measurement ledger,
+SQLite backup/restore drill, and cross-platform regression tests.
+This does **not** turn BEAN Core into a restrictive production agent or
+imply paid-customer validation.
+
+Read the [Operational Pilot Release guide](docs/OPERATIONAL_PILOT_RELEASE.md)
+for installation, measured customer-value criteria, privacy constraints,
+recovery exercises, remaining production gates and the license decision.
+This research branch is not a production release.
+
 ## Part of the BEAN ecosystem
 
 🌱 **[Meet BEAN on the live website](https://danieloculus0-bot.github.io/BEAN/)** · [Follow BEAN's development on GitHub](https://github.com/danieloculus0-bot/BEAN) · [Reproduce the offline quickstart](https://github.com/danieloculus0-bot/BEAN/blob/main/docs/GETTING_STARTED.md)
