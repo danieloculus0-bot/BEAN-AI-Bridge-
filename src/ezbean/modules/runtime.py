@@ -76,7 +76,7 @@ class BlockRuntime:
         self.blocks: dict[str, Block] = {}
         self._functions: dict[str, Any] = {}
         self._revisions: dict[str, str] = {}
-        _schema(conn)
+        _schema(self.conn)
 
     def register(self, block: Block | dict) -> None:
         if isinstance(block, dict):
