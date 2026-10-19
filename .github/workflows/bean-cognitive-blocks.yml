@@ -1,0 +1,42 @@
+name: BEAN Bridge Cognitive Blocks
+
+on:
+  push:
+    branches: [feature/cognitive-blocks-20261019]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-repo-blocks:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - name: Checkout BEAN Bridge
+        uses: actions/checkout@v4
+      - name: Checkout BEAN Core logic blocks
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: feature/cognitive-blocks-20261019
+          path: _bean_core
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Dependencies
+        run: python -m pip install pytest psutil
+      - name: Compile Bridge and Core logic
+        run: python -m compileall -q src/ezbean/modules src/ezbean/bean_blocks.py _bean_core/bean/modules
+      - name: Exercise bridge-to-core graph and learning
+        env:
+          BEAN_CORE_PATH: ${{ github.workspace }}/_bean_core
+        run: python -m pytest tests/test_cognitive_blocks.py -q -ra
