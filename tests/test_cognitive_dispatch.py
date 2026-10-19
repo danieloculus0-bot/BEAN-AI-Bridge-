@@ -177,3 +177,17 @@ def test_experiment_failure_changes_method_and_keeps_question_open(connected):
     )[0]
     assert errors == 1
     resumed.conn.close()
+
+
+@pytest.mark.skipif(not os.environ.get("BEAN_CORE_PATH"),
+                    reason="Real Core branch required")
+def test_runnable_end_to_end_demo_reports_actual_method_experience(tmp_path):
+    from examples.connected_cognition import run
+    results = run(core_root=os.environ["BEAN_CORE_PATH"],
+                  data_dir=tmp_path / "demo")
+    assert len(results["trials"]) == 4
+    assert sum(results["bridge_visits"].values()) == 4
+    assert results["core_answered"] == 4
+    assert results["learned_preference"] in ("bean.mean_sign", "bean.last_sign")
+    assert (tmp_path / "demo" / "core.sqlite").exists()
+    assert (tmp_path / "demo" / "bridge.sqlite").exists()
