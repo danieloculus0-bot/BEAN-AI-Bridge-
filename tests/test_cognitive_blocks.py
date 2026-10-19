@@ -154,7 +154,7 @@ def test_registered_git_branch_is_pulled_compiled_and_run_only_when_selected(tmp
         "capabilities": ["remote_binary_forecast"],
         "source": {
             "git_url": os.environ["BEAN_CORE_PATH"],
-            "ref": "fix/engine-firing-sweep-20261019",
+            "ref": "experiment/representation-fidelity-20261019",
             "python_root": ".",
             "module_file": "bean/modules/builtin.py",
         },
