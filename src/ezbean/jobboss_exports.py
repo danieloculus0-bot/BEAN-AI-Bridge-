@@ -25,7 +25,7 @@ MAX_SOURCE_SIZE = 35_000_000
 MAX_UNCOMPRESSED = 90_000_000
 JOB_HEADERS = {"JobNumber","CustomerCode","QtyOrdered","DueDate","QtyShipped","ShippedDate"}
 SHIP_HEADERS = {"PackingList","JobNumber","DateShipped","DueDate","QtyShipped"}
-RMA_HEADERS = {"Date","Order Number","Customer","Department","Person","Defect Description","Reason Code"}
+RMA_HEADERS = {"Date","Order Number","Customer","Department","Person","Defect Description"}
 NS = {"m":"http://schemas.openxmlformats.org/spreadsheetml/2006/main",
       "r":"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
       "p":"http://schemas.openxmlformats.org/package/2006/relationships"}
