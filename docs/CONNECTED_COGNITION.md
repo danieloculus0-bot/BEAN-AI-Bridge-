@@ -40,6 +40,13 @@ Core SQLite and goal/curiosity/event tables, Bridge's real module catalog,
 plugin loader and persisted feedback selection. The fixture is deliberately
 simple so improvement can be directly measured and rechecked.
 
+The runnable demonstration now compares an unchanged first-method control
+against the Bridge feedback-selected method on **four fresh synthetic
+sequences**. CI requires `cold_correct == 0` and
+`learned_correct == 4`. These cases were designed to distinguish the
+two simple strategies; the result shows the integration adapts its method
+selection, not generalization to unknown tasks.
+
 ## Windows run — separate test checkouts, avoiding your existing BEAN workspace
 
 ```powershell
