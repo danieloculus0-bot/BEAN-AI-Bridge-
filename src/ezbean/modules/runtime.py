@@ -224,26 +224,33 @@ class BlockRuntime:
         if capability not in block.capabilities:
             raise ValueError("block does not implement " + capability)
         run_id = "block_" + uuid.uuid4().hex
+        phase = "execution"
         try:
             fn = self._load(block, refresh=refresh)
             output = fn(dict(payload), dict(context or {}))
+            phase = "transport"
             if not isinstance(output, dict):
                 raise TypeError("block must return a dictionary")
-            # Keep graph ports serializable across independent programs.
+            # Keep graph ports interoperable across programs. A transport
+            # problem is not evidence that the reasoning strategy failed.
             json.dumps(output, allow_nan=False)
         except Exception as exc:
-            # An unusable module is an observed negative outcome. Record it
-            # and adapt selection before propagating the error to the caller.
+            transport_problem = phase == "transport"
             self.conn.execute(
                 "INSERT INTO cognitive_block_runs "
                 "(run_id, capability, block_name, code_revision, "
                 "execution_status, error_summary) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (run_id, capability, block.name, self._revisions.get(block.name),
-                 "error", f"{type(exc).__name__}: {exc}"[:500]),
+                 "transport_error" if transport_problem else "error",
+                 f"{type(exc).__name__}: {exc}"[:500]),
             )
             self.conn.commit()
-            self.feedback(run_id, -1.0)
+            if not transport_problem:
+                # Only actual execution failures influence BEAN's preference
+                # for a block; serialization is a separate infrastructure
+                # condition with no measured strategy outcome.
+                self.feedback(run_id, -1.0)
             raise
         self.conn.execute(
             "INSERT INTO cognitive_block_runs "
