@@ -1,0 +1,73 @@
+name: BEAN integrated engine firing sweep
+
+on:
+  push:
+    branches: [test/engine-firing-sweep-20261019]
+  pull_request:
+    branches: [feature/pilot-readiness-five-20261019]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wiring-and-continuity:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    env:
+      BEAN_CORE_PATH: ${{ github.workspace }}/_bean_core
+      PYTHONPATH: src
+    steps:
+      - name: Checkout Bridge and experimental wiring
+        uses: actions/checkout@v4
+      - name: Checkout corresponding BEAN Core engine
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: fix/engine-firing-sweep-20261019
+          path: _bean_core
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test dependencies
+        run: python -m pip install pytest psutil
+      - name: Compile all existing Core and Bridge cognitive code
+        run: python -m compileall -q src/ezbean _bean_core/bean
+      - name: Verify Core runtime and original cognitive regression
+        run: python -m pytest _bean_core/bean/tests/test_engine_firing_sweep.py _bean_core/bean/tests/test_learning_flow_regressions.py -q -ra
+      - name: Verify cross-repository event-to-memory-to-feedback-to-restart circuit
+        run: python -m pytest tests/test_engine_bus_sweep.py tests/test_cognitive_blocks.py tests/test_audit_module_reload.py tests/test_audit_learning_failure_records.py -q -ra
+      - name: Full pre-existing Bridge regression
+        run: python -m unittest discover -s tests -v
+      - name: Record engine communication verdict
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          out={"schema":"BEAN_ENGINE_FIRING_SWEEP_V1","synthetic":True,
+          "core_branch":"fix/engine-firing-sweep-20261019",
+          "bridge_branch":"test/engine-firing-sweep-20261019",
+          "tests_requested":["core reflection/curiosity","goal coalescing",
+          "reasoning evidence context","structured event memory recall",
+          "Bridge numeric-array ports","Bridge method selection and feedback",
+          "restart continuity","full Bridge unit suite"],
+          "limits":["This integration is explicitly wired by tests, not a default autonomous loop.",
+          "No LLM generalization, hardware, paid data or customer usage proved."]}
+          Path("engine-firing-observation.json").write_text(json.dumps(out,indent=2)+"\n")
+          PY
+      - name: Attach evidence for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-engine-firing-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: engine-firing-observation.json
+          if-no-files-found: ignore
+          retention-days: 14
