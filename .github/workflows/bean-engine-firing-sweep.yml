@@ -54,7 +54,11 @@ jobs:
               db=Path(folder)/"simulated-engine.sqlite"
               cmd=[sys.executable,str(core/"bean_run.py"),"--db",str(db),
                    "--ticks","2","--hz","100","--no-seed"]
-              proc=subprocess.run(cmd,cwd=str(core),capture_output=True,text=True,timeout=90)
+              # Reproduce Windows consoles that still default to cp1252.
+              env=dict(os.environ)
+              env["PYTHONIOENCODING"]="cp1252"
+              proc=subprocess.run(cmd,cwd=str(core),capture_output=True,
+                                  text=True,timeout=90,env=env)
               if proc.returncode:
                   print(proc.stdout)
                   print(proc.stderr)
@@ -72,6 +76,12 @@ jobs:
                   assert types.get("reflection", 0) >= 1, types
                   assert consolidation >= 1, types
                   assert types.get("memory_consolidation", 0) >= 1, types
+                  handler_failures=conn.execute(
+                      "SELECT COUNT(*) FROM events WHERE subtype='tick_handler_error'"
+                  ).fetchone()[0]
+                  assert handler_failures == 0, (
+                      "Runtime tick handlers crashed: "+str(handler_failures)
+                  )
               finally:
                   conn.close()
           PY
