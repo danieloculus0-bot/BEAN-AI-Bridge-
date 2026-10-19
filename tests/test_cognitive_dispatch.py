@@ -220,7 +220,7 @@ def test_failed_hypotheses_do_not_resolve_question_and_new_module_can_reopen_wor
         folder = tmp_path / name
         folder.mkdir()
         (folder / "logic.py").write_text(
-            'def run(data, context):\\n    return {"answer": ' + str(value) + '}\\n',
+            'def run(data, context):\n    return {"answer": ' + str(value) + '}\n',
             encoding="utf-8",
         )
         runner.register({
@@ -258,7 +258,7 @@ def test_failed_hypotheses_do_not_resolve_question_and_new_module_can_reopen_wor
     folder = tmp_path / "working_new"
     folder.mkdir()
     (folder / "logic.py").write_text(
-        'def run(data, context):\\n    return {"answer": 42}\\n',
+        'def run(data, context):\n    return {"answer": 42}\n',
         encoding="utf-8",
     )
     runner.register({
@@ -279,7 +279,7 @@ def test_missing_expected_output_key_is_not_accidental_match(connected):
     folder = tmp_path / "missing_key"
     folder.mkdir()
     (folder / "logic.py").write_text(
-        'def run(data, context):\\n    return {"other": 3}\\n',
+        'def run(data, context):\n    return {"other": 3}\n',
         encoding="utf-8",
     )
     runner.register({
