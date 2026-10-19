@@ -66,6 +66,31 @@ jobs:
               assert all(r['status']=='duplicate' for r in more['source_status'])
               print('installed_operator_demo=PASS output_sha256='+receipt['json_sha256'])
           PY
+      - name: Install beta fully offline in a fresh isolated virtual environment
+        shell: bash
+        run: |
+          python - <<'PY'
+          import glob
+          import json
+          import pathlib
+          import subprocess
+          import sys
+          import tempfile
+          wheels=glob.glob('dist/*.whl')
+          assert len(wheels)==1
+          script=(pathlib.Path.cwd()/'scripts'/'install_beta.py').resolve()
+          with tempfile.TemporaryDirectory(prefix='bean-offline-install-') as home:
+              result=subprocess.run([
+                  sys.executable,str(script),'--wheel',
+                  str(pathlib.Path(wheels[0]).resolve()),
+                  '--home',str(pathlib.Path(home)/'BEAN-Operations')
+              ],check=True,capture_output=True,text=True)
+              report=json.loads(result.stdout)
+              assert report['install_status']=='PASS'
+              assert report['offline_wheel_install']
+              assert report['fictional_smoke_test']
+              print('offline_install=PASS')
+          PY
       - name: Run BEAN Operations unit and edge-case tests
         run: python -m pytest tests/test_operations_run.py tests/test_backup.py tests/test_pilot.py tests/test_jobboss_exports.py tests/test_daily_brief.py tests/test_management_intelligence.py -q -ra
       - name: Run full Bridge regression suite
