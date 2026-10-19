@@ -42,6 +42,13 @@ The first task family is structured and measurable. This does not yet
 autonomously generate hypotheses from arbitrary natural-language questions or
 make a genuine language-model-directed tool plan.
 
+Follow-up Core repairs improve repeated operation: pending curiosity goals
+are deduplicated across cognition cycles, and the compact local Ollama prompt
+retains selected previous measured module outcomes alongside the newest
+events. The demo's withheld synthetic comparison reports 0/4 correct for the
+unchanged first method and 4/4 for Bridge's feedback-selected method. These
+four hand-designed cases are not evidence of wider generalization.
+
 ## Remaining work, in useful increments
 
 1. **Naturally generated question -> tool planning.** Curiosity, goals,
