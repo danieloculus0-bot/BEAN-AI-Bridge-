@@ -209,8 +209,14 @@ class BlockRuntime:
                       if capability in b.capabilities]
         if not candidates:
             raise LookupError("no installed catalog block for " + capability)
-        if explore and (rng or random).random() < 0.15:
-            return (rng or random).choice(candidates)
+        if explore:
+            untried = [b for b in candidates
+                       if self.preference(capability, b.name)[0] == 0]
+            if untried:
+                # Curiosity starts with a method BEAN has not yet tried.
+                return (rng or random).choice(untried)
+            if (rng or random).random() < 0.15:
+                return (rng or random).choice(candidates)
         # Successful results change *which* method BEAN selects next.
         # Untried blocks retain a neutral score; caller controls exploration.
         return max(candidates, key=lambda b: self.preference(capability, b.name)[1])
