@@ -93,6 +93,43 @@ def restore_drill(snapshot: Path) -> dict:
         return check_database(target_path)
 
 
+
+def verify_backup(snapshot: Path) -> dict:
+    """Verify receipt, snapshot bytes and independent restore against backup time.
+
+    An integrity-only restore is not sufficient to prove that the selected
+    backup matches the checksum emitted during its creation.
+    """
+    receipt = snapshot.with_suffix(snapshot.suffix + ".receipt.json")
+    if not receipt.is_file():
+        raise FileNotFoundError("Backup receipt missing: " + str(receipt))
+    data = json.loads(receipt.read_text(encoding="utf-8"))
+    expected_fields = {
+        "schema", "created_at_utc", "snapshot_filename", "snapshot_bytes",
+        "snapshot_sha256", "restored_integrity", "restored_tables",
+    }
+    if not isinstance(data, dict) or set(data) != expected_fields:
+        raise ValueError("Backup receipt schema mismatch")
+    if data["schema"] != "BEAN_SQLITE_BACKUP_RECEIPT_V1":
+        raise ValueError("Unrecognized backup receipt")
+    if data["snapshot_filename"] != snapshot.name:
+        raise ValueError("Backup receipt filename mismatch")
+    if snapshot.stat().st_size != data["snapshot_bytes"]:
+        raise ValueError("Backup snapshot byte count differs from receipt")
+    if hashlib.sha256(snapshot.read_bytes()).hexdigest() != data["snapshot_sha256"]:
+        raise ValueError("Backup snapshot SHA256 mismatch")
+    restored = restore_drill(snapshot)
+    if (restored["integrity"] != data["restored_integrity"] or
+            restored["tables"] != data["restored_tables"]):
+        raise ValueError("Restored database differs from recorded backup receipt")
+    return {
+        "receipt_verified": True, "snapshot_sha256": data["snapshot_sha256"],
+        "restored_integrity": restored["integrity"],
+        "restored_tables": restored["tables"],
+        "snapshot_bytes": data["snapshot_bytes"],
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="BEAN private SQLite backup and restore drill")
     actions = parser.add_subparsers(dest="action", required=True)
@@ -103,7 +140,7 @@ def main() -> None:
     check.add_argument("--database", type=Path, required=True)
     args = parser.parse_args()
     result = (backup(args.database, args.out) if args.action == "backup"
-              else restore_drill(args.database))
+              else verify_backup(args.database))
     print(json.dumps(result, indent=2))
 
 
