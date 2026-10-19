@@ -72,18 +72,33 @@ def test_curiosity_forms_executable_goals_and_feeds_outcomes_back_to_memory(conn
                                       reflection_interval=500)
     handlers.run_due(1, session, {"session_uuid": session})
     assert next(h for h in handlers.summary() if h["name"] == "cognitive_experiments")["run_count"] == 1
-    assert get_store().fetchone("SELECT status FROM curiosity WHERE id=?",
-                                (question_id,))["status"] == "answered"
+    # The first attempted predictor is wrong. The question must stay open
+    # until an alternative is tried, rather than treating failure as an answer.
     assert get_store().fetchone(
-        "SELECT COUNT(*) FROM cognition_goal_proposals WHERE action_type='run_experiment' AND status='completed'"
-    )[0] == 1
-
-    # Once an observation has been processed, the same question is not retried.
-    assert dispatcher.poll(session) == []
+        "SELECT status FROM curiosity WHERE id=?", (question_id,)
+    )["status"] == "open"
     first = get_store().fetchone(
         "SELECT id, data FROM events WHERE subtype='cognitive_module_experiment' ORDER BY id DESC LIMIT 1"
     )
     first_payload = json.loads(first["data"])
+    assert first_payload["matched"] is False
+    assert get_store().fetchone(
+        "SELECT COUNT(*) FROM events WHERE subtype='experiment_result'"
+    )[0] == 0
+
+    tried_again = dispatcher.poll(session)
+    assert len(tried_again) == 1
+    assert tried_again[0]["block"] != first_payload["block"]
+    assert tried_again[0]["matched"] is True
+    assert get_store().fetchone(
+        "SELECT status FROM curiosity WHERE id=?", (question_id,)
+    )["status"] == "answered"
+    assert get_store().fetchone(
+        "SELECT COUNT(*) FROM cognition_goal_proposals WHERE action_type='run_experiment' AND status='completed'"
+    )[0] == 2
+
+    # Resolved questions stop generating new work.
+    assert dispatcher.poll(session) == []
     assert first_payload["question_id"] == question_id
     assert first_payload["capability"] == "binary_forecast"
     assert first_payload["reward"] in (-1.0, 1.0)
@@ -99,7 +114,7 @@ def test_curiosity_forms_executable_goals_and_feeds_outcomes_back_to_memory(conn
     second = dispatcher.poll(session)
     assert len(second) == 1
     assert second[0]["question_id"] == q2
-    assert second[0]["block"] != first_payload["block"]
+    assert second[0]["block"] in ("bean.mean_sign", "bean.last_sign")
 
     # Bridge retains its method preferences after SQLite restart.
     old_preference = runner.preference("binary_forecast", second[0]["block"])
@@ -186,7 +201,7 @@ def test_runnable_end_to_end_demo_reports_actual_method_experience(tmp_path):
     results = run(core_root=os.environ["BEAN_CORE_PATH"],
                   data_dir=tmp_path / "demo")
     assert len(results["trials"]) == 4
-    assert sum(results["bridge_visits"].values()) == 4
+    assert sum(results["bridge_visits"].values()) >= 4
     assert results["core_answered"] == 4
     assert results["holdout"] == {
         "cases": 4, "cold_correct": 0, "learned_correct": 4,
