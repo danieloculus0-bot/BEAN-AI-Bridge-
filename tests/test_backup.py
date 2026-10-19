@@ -1,5 +1,6 @@
 """Operational pilot backup tests exercise WAL snapshots and real restore."""
 import sqlite3
+from contextlib import closing
 import tempfile
 from pathlib import Path
 import unittest
@@ -27,7 +28,7 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(result["restored_tables"], ["events"])
         self.assertEqual(restore_drill(output)["integrity"], "ok")
         self.assertTrue(output.with_suffix(".sqlite.receipt.json").is_file())
-        with sqlite3.connect(str(output)) as copied:
+        with closing(sqlite3.connect(str(output))) as copied:
             self.assertEqual(
                 copied.execute("SELECT note FROM events").fetchone()[0],
                 "synthetic-observation"
