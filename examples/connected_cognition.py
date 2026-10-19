@@ -48,14 +48,28 @@ def run(*, core_root: str | None = None, data_dir: Path) -> dict:
              "question": "Which local predictor is useful for this observed sequence?"},
             context={"session_uuid": session},
         )
-        outcome = dispatcher.poll(session)[0]
-        trajectory.append({
-            "question_id": note["output"]["question_id"],
-            "method": outcome["block"],
-            "prediction": outcome["output"]["prediction"],
-            "observed": observed,
-            "reward": outcome["reward"],
-        })
+        question_id = note["output"]["question_id"]
+        # A failed hypothesis remains an open question. Allow Bridge to
+        # investigate with another installed strategy before moving on.
+        while True:
+            attempts = dispatcher.poll(session)
+            if not attempts:
+                break
+            for outcome in attempts:
+                trajectory.append({
+                    "question_id": outcome["question_id"],
+                    "method": outcome.get("block"),
+                    "prediction": (outcome.get("output") or {}).get("prediction"),
+                    "observed": observed,
+                    "reward": outcome.get("reward"),
+                    "matched": outcome.get("matched", False),
+                })
+            status = get_store().fetchone(
+                "SELECT status FROM curiosity WHERE id=?", (question_id,)
+            )["status"]
+            if status == "answered":
+                break
+
     # Evaluation uses fresh sequences that were not part of adaptation.
     # The "cold" arm is the initial, untrained first-block selection;
     # the other arm uses the retained preference actually learned above.
