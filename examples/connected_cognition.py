@@ -56,8 +56,25 @@ def run(*, core_root: str | None = None, data_dir: Path) -> dict:
             "observed": observed,
             "reward": outcome["reward"],
         })
+    # Evaluation uses fresh sequences that were not part of adaptation.
+    # The "cold" arm is the initial, untrained first-block selection;
+    # the other arm uses the retained preference actually learned above.
+    heldout = [
+        ([10, 8, -2], 1), ([-10, -8, 2], 0),
+        ([6, 3, -1], 1), ([-6, -3, 1], 0),
+    ]
+    cold_correct, learned_correct = 0, 0
+    for history, observed in heldout:
+        cold = runtime.run("binary_forecast", {"history": history},
+                           block_name="bean.last_sign")["output"]
+        chosen = runtime.run("binary_forecast", {"history": history})["output"]
+        cold_correct += int(cold["prediction"] == observed)
+        learned_correct += int(chosen["prediction"] == observed)
+
     result = {
         "session": session, "trials": trajectory,
+        "holdout": {"cases": len(heldout), "cold_correct": cold_correct,
+                    "learned_correct": learned_correct},
         "learned_preference": runtime.choose("binary_forecast").name,
         "core_answered": get_store().fetchone(
             "SELECT COUNT(*) FROM curiosity WHERE status='answered'")[0],
