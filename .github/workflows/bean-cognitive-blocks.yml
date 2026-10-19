@@ -40,6 +40,10 @@ jobs:
         env:
           BEAN_CORE_PATH: ${{ github.workspace }}/_bean_core
         run: python -m pytest tests/test_cognitive_blocks.py tests/test_audit_learning_failure_records.py tests/test_audit_module_reload.py tests/test_learning_loop_lab009.py tests/test_cognitive_dispatch.py -q -ra
+      - name: Execute Core-to-Bridge cognitive demo
+        env:
+          PYTHONPATH: src
+        run: python -m examples.connected_cognition --core "${{ github.workspace }}/_bean_core"
 
   full-bridge-regression:
     strategy:
