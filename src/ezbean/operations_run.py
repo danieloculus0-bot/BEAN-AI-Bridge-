@@ -39,17 +39,25 @@ def _example_xlsx(path: Path) -> None:
         )
         sheet.append(f'<row r="{number}">{xml}</row>')
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr(
+        # A generated XLSX is a ZIP. Default ZIP member timestamps vary by
+        # launch time, defeating source SHA deduplication between identical
+        # runs. Keep fixture archive bytes deterministic.
+        def write_file(name: str, payload: str) -> None:
+            member = zipfile.ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
+            member.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(member, payload)
+
+        write_file(
             "xl/workbook.xml",
             f'<workbook xmlns="{ns}" xmlns:r="{rel}">'
             '<sheets><sheet name="RMA Log" sheetId="1" r:id="rId1"/></sheets></workbook>',
         )
-        archive.writestr(
+        write_file(
             "xl/_rels/workbook.xml.rels",
             f'<Relationships xmlns="{pkg}"><Relationship Id="rId1" '
             'Target="worksheets/sheet1.xml" Type="x"/></Relationships>',
         )
-        archive.writestr(
+        write_file(
             "xl/worksheets/sheet1.xml",
             f'<worksheet xmlns="{ns}"><sheetData>{"".join(sheet)}</sheetData></worksheet>',
         )
