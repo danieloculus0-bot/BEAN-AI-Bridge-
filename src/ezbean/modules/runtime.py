@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import hashlib
 import importlib
+import importlib.util
 import json
 from pathlib import Path
 import py_compile
@@ -144,7 +145,34 @@ class BlockRuntime:
         if not separator or not attr:
             raise ValueError("entrypoint must look like package.module:callable")
         importlib.invalidate_caches()
-        function = getattr(importlib.import_module(mod_name), attr)
+        if file_name:
+            # Each checked-out version gets its own module identity. The
+            # normal import cache must not substitute stale code from another
+            # Git branch or from a previous refresh of the same checkout.
+            source_file = (checkout / file_name).resolve()
+            parent = mod_name.rpartition(".")[0]
+            if parent:
+                importlib.import_module(parent)
+            signature = hashlib.sha256(
+                (str(source_file) + ":" +
+                 hashlib.sha256(source_file.read_bytes()).hexdigest()).encode()
+            ).hexdigest()[:20]
+            alias = (parent + "." if parent else "") + "_bean_block_" + signature
+            if alias not in sys.modules:
+                spec = importlib.util.spec_from_file_location(alias, source_file)
+                if spec is None or spec.loader is None:
+                    raise ImportError("could not load selected block module: " + str(source_file))
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[alias] = module
+                try:
+                    spec.loader.exec_module(module)
+                except Exception:
+                    del sys.modules[alias]
+                    raise
+            function = getattr(sys.modules[alias], attr)
+        else:
+            module = importlib.import_module(mod_name)
+            function = getattr(importlib.reload(module) if refresh else module, attr)
         if not callable(function):
             raise TypeError("block entrypoint must be callable")
         self._functions[block.name] = function
