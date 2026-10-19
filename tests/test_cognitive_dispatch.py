@@ -107,16 +107,16 @@ def test_curiosity_forms_executable_goals_and_feeds_outcomes_back_to_memory(conn
     resumed = new_runner()
     assert resumed.preference("binary_forecast", second[0]["block"]) == old_preference
     assert resumed.choose("binary_forecast").name in ("bean.mean_sign", "bean.last_sign")
-    resumed.conn.close()
 
     # Core's reasoning and drive systems are now loadable through the SAME bus.
-    reasoning = runner.run("reasoning", {
+    reasoning = resumed.run("reasoning", {
         "adapter_name": "mock", "session_uuid": session,
         "source_event_id": first["id"],
     })
     assert reasoning["output"]["success"] is True
-    drives = runner.run("drive_evaluation", {"session_uuid": session})
+    drives = resumed.run("drive_evaluation", {"session_uuid": session})
     assert len(drives["output"]["states"]) > 0
+    resumed.conn.close()
 
 
 def test_experiment_failure_changes_method_and_keeps_question_open(connected):
