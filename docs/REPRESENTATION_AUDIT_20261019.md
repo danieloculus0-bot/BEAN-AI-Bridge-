@@ -30,8 +30,8 @@ architecture, not create a new cognitive layer.
    `error` execution receipts. A non-JSON-compatible output remains an
    explicit error, but it no longer gives the cognitive strategy an
    unwarranted negative reward.
-4. The format experiment compares strict compact UTF-8 JSON, optional
-   MessagePack, and little-endian float64 arrays for homogeneous
+4. The format experiment compares strict compact and canonical UTF-8 JSON,
+   optional MessagePack, and little-endian float64 arrays for homogeneous
    numerical readings. It records data size and median encode/decode
    microseconds plus strict round-trip results.
 
@@ -49,7 +49,9 @@ Python 3.10 and 3.12). MessagePack is an **experiment-only** dependency and
 is not added to BEAN's install requirements. The script still runs without
 it, marking the unavailable candidate by absence of rows.
 
-Datasets are synthetic but shaped like actual observed events, reasoning
+Compact JSON is tested in original field order; canonical JSON additionally
+sorts object keys for repeatable evidence hashing. Keeping them separate avoids
+misattributing canonicalization overhead to JSON itself.\n\nDatasets are synthetic but shaped like actual observed events, reasoning
 packets, Bridge feedback receipts, and 4096-item numerical arrays. Each
 result must round-trip without changes. The format benchmark does **not**
 measure actual production workloads, cross-process RPC latency, large
