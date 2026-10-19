@@ -41,7 +41,6 @@ GAP_GUIDANCE = {
     "SCHEDULE_SHIP_STATUS_UNKNOWN": ("P0", "Verify missing shipped quantity on due-date lines before classifying overdue jobs."),
     "RMA_EXPORT_MISSING": ("P0", "Provide an RMA Tracker export; unknown RMA count is not zero."),
     "RMA_DATE_QUARANTINE": ("P0", "Reconcile quarantined RMA dates with the original source; observed count is a lower bound."),
-    "RMA_REASON_MISSING": ("P1", "Classify missing RMA reasons using the source records."),
     "RMA_QUANTITY_UNKNOWN": ("P2", "RMA units require a separately validated source column."),
     "RMA_COST_UNKNOWN": ("P2", "RMA cost requires a separately validated cost source."),
     "OTD_POLICY_UNCONFIRMED": ("P1", "Obtain approval for the official customer OTD policy before using this as a scorecard."),
