@@ -64,6 +64,11 @@ jobs:
               more=json.loads(again.stdout)
               assert receipt['json_sha256'] == more['json_sha256']
               assert all(r['status']=='duplicate' for r in more['source_status'])
+              diagnosis=subprocess.run(['bean-doctor','--database',str(out.parent/'synthetic-ledger.sqlite')],
+                  cwd=temp, check=True, text=True, capture_output=True)
+              status=json.loads(diagnosis.stdout)
+              assert status['database']['state']=='pass',status
+              assert not status['production_certified']
               print('installed_operator_demo=PASS output_sha256='+receipt['json_sha256'])
           PY
       - name: Install beta fully offline in a fresh isolated virtual environment
@@ -92,7 +97,7 @@ jobs:
               print('offline_install=PASS')
           PY
       - name: Run BEAN Operations unit and edge-case tests
-        run: python -m pytest tests/test_operations_run.py tests/test_backup.py tests/test_pilot.py tests/test_jobboss_exports.py tests/test_daily_brief.py tests/test_management_intelligence.py -q -ra
+        run: python -m pytest tests/test_doctor.py tests/test_operations_run.py tests/test_backup.py tests/test_pilot.py tests/test_jobboss_exports.py tests/test_daily_brief.py tests/test_management_intelligence.py -q -ra
       - name: Run full Bridge regression suite
         run: python -m unittest discover -s tests -v
       - name: Rehearse ten synthetic workdays and verify reproducibility
