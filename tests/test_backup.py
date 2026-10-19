@@ -1,11 +1,12 @@
 """Operational pilot backup tests exercise WAL snapshots and real restore."""
 import sqlite3
+import json
 from contextlib import closing
 import tempfile
 from pathlib import Path
 import unittest
 
-from ezbean.backup import backup, restore_drill, check_database
+from ezbean.backup import backup, restore_drill, check_database, verify_backup
 
 
 class BackupTests(unittest.TestCase):
@@ -37,6 +38,26 @@ class BackupTests(unittest.TestCase):
         self.connection.commit()
         with closing(sqlite3.connect(str(output))) as copied:
             self.assertEqual(copied.execute("SELECT COUNT(*) FROM events").fetchone()[0], 1)
+
+    def test_backup_receipt_must_match_bytes_and_restore(self):
+        path = self.folder / "snapshot.sqlite"
+        initial = backup(self.db, path)
+        result = verify_backup(path)
+        self.assertTrue(result["receipt_verified"])
+        self.assertEqual(result["snapshot_sha256"], initial["snapshot_sha256"])
+        receipt = path.with_suffix(".sqlite.receipt.json")
+        manifest = json.loads(receipt.read_text())
+        manifest["snapshot_sha256"] = "f" * 64
+        receipt.write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, "SHA256 mismatch"):
+            verify_backup(path)
+
+    def test_snapshot_verification_requires_its_receipt(self):
+        path = self.folder / "snapshot.sqlite"
+        backup(self.db, path)
+        path.with_suffix(".sqlite.receipt.json").unlink()
+        with self.assertRaises(FileNotFoundError):
+            verify_backup(path)
 
     def test_existing_snapshot_refused_without_overwrite(self):
         output = self.folder / "out.sqlite"
