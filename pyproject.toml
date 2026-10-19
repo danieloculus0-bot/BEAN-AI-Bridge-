@@ -21,6 +21,7 @@ dependencies = []
 bean-export = "ezbean.jobboss_exports:main"
 bean-brief = "ezbean.daily_brief:main"
 bean-pilot = "ezbean.pilot:main"
+bean-backup = "ezbean.backup:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
