@@ -211,3 +211,90 @@ def test_runnable_end_to_end_demo_reports_actual_method_experience(tmp_path):
     assert results["learned_preference"] in ("bean.mean_sign", "bean.last_sign")
     assert (tmp_path / "demo" / "core.sqlite").exists()
     assert (tmp_path / "demo" / "bridge.sqlite").exists()
+
+
+def test_failed_hypotheses_do_not_resolve_question_and_new_module_can_reopen_work(connected):
+    session, runner, new_runner, tmp_path = connected
+    from bean.memory.store import get_store
+    for name, value in (("wrong_a", 10), ("wrong_b", 20)):
+        folder = tmp_path / name
+        folder.mkdir()
+        (folder / "logic.py").write_text(
+            'def run(data, context):\\n    return {"answer": ' + str(value) + '}\\n',
+            encoding="utf-8",
+        )
+        runner.register({
+            "name": name, "entrypoint": "logic:run",
+            "capabilities": ["experimental_math"],
+            "source": {"local_root": str(folder), "module_file": "logic.py"},
+        })
+
+    result = runner.run("observe_experiment", {
+        "session_uuid": session,
+        "capability": "experimental_math",
+        "inputs": {"x": 7},
+        "expected_output": {"answer": 42},
+    })
+    question_id = result["output"]["question_id"]
+    dispatcher = CognitiveDispatcher(runner)
+    attempts = dispatcher.poll(session) + dispatcher.poll(session)
+    assert len(attempts) == 2
+    assert {attempt["block"] for attempt in attempts} == {"wrong_a", "wrong_b"}
+    assert all(attempt["matched"] is False for attempt in attempts)
+    assert get_store().fetchone("SELECT status FROM curiosity WHERE id=?",
+                                (question_id,))["status"] == "open"
+    assert get_store().fetchone(
+        "SELECT COUNT(*) FROM events WHERE subtype='experiment_result'"
+    )[0] == 0
+
+    # Exhaustion is not permission to mark the unknown answer as known.
+    assert dispatcher.poll(session) == []
+    assert dispatcher.poll(session) == []
+    assert get_store().fetchone(
+        "SELECT COUNT(*) FROM cognition_goal_proposals WHERE action_type='run_experiment'"
+    )[0] == 2
+
+    # Adding a new cognitive capability lets BEAN continue the same question.
+    folder = tmp_path / "working_new"
+    folder.mkdir()
+    (folder / "logic.py").write_text(
+        'def run(data, context):\\n    return {"answer": 42}\\n',
+        encoding="utf-8",
+    )
+    runner.register({
+        "name": "working_new", "entrypoint": "logic:run",
+        "capabilities": ["experimental_math"],
+        "source": {"local_root": str(folder), "module_file": "logic.py"},
+    })
+    resumed = dispatcher.poll(session)
+    assert len(resumed) == 1
+    assert resumed[0]["block"] == "working_new"
+    assert resumed[0]["matched"] is True
+    assert get_store().fetchone("SELECT status FROM curiosity WHERE id=?",
+                                (question_id,))["status"] == "answered"
+
+
+def test_missing_expected_output_key_is_not_accidental_match(connected):
+    session, runner, new_runner, tmp_path = connected
+    folder = tmp_path / "missing_key"
+    folder.mkdir()
+    (folder / "logic.py").write_text(
+        'def run(data, context):\\n    return {"other": 3}\\n',
+        encoding="utf-8",
+    )
+    runner.register({
+        "name": "missing_key", "entrypoint": "logic:run",
+        "capabilities": ["question_with_none"],
+        "source": {"local_root": str(folder), "module_file": "logic.py"},
+    })
+    result = runner.run("observe_experiment", {
+        "session_uuid": session, "capability": "question_with_none",
+        "inputs": {}, "expected_output": {"missing": None},
+    })
+    qid = result["output"]["question_id"]
+    attempt = CognitiveDispatcher(runner).poll(session)
+    assert len(attempt) == 1
+    assert attempt[0]["matched"] is False
+    assert get_store().fetchone(
+        "SELECT status FROM curiosity WHERE id=?", (qid,)
+    )["status"] == "open"
