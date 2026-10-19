@@ -18,7 +18,7 @@ Extract the `.whl` file to a folder on the test PC, for example
 With Python 3.11 or 3.12 installed, on Windows PowerShell:
 
 ```powershell
-python .\scripts\install_beta.py --wheel "C:\BEAN-Install\bean_ai_bridge-0.1.0b1-py3-none-any.whl" --home "$env:LOCALAPPDATA\BEAN-Operations"
+python .\scripts\install_beta.py --wheel "C:\BEAN-Install\bean_ai_bridge-0.1.0b2-py3-none-any.whl" --home "$env:LOCALAPPDATA\BEAN-Operations"
 ```
 
 Use the **actual downloaded filename** if it differs from this example.
