@@ -77,9 +77,6 @@ def analyze_site(site: str, report: dict) -> dict:
     if quarantine:
         gaps.append(_gap("RMA_DATE_QUARANTINE",
                          "Reconcile invalid RMA dates by checking the original record; do not guess."))
-    if raw.get("rma_missing_reason_entries",0):
-        gaps.append(_gap("RMA_REASON_MISSING",
-                         "Some RMA occurrences lack classification. Verify their reason codes."))
     if raw.get("rma_quantity") is None:
         gaps.append(_gap("RMA_QUANTITY_UNKNOWN",
                          "Provide a validated source for returned quantities."))
