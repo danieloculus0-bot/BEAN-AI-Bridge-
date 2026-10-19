@@ -276,6 +276,7 @@ def test_failed_hypotheses_do_not_resolve_question_and_new_module_can_reopen_wor
 
 def test_missing_expected_output_key_is_not_accidental_match(connected):
     session, runner, new_runner, tmp_path = connected
+    from bean.memory.store import get_store
     folder = tmp_path / "missing_key"
     folder.mkdir()
     (folder / "logic.py").write_text(
