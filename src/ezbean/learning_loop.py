@@ -167,7 +167,7 @@ class EvidenceLearningLoop:
             investigation_status = "insufficient_verified_evidence"
             try:
                 # Source retrieval is host-provided and independently metered.
-                candidates = list(islice(iter(self.investigator.investigate(concept, question)), self.max_sources))
+                candidates = islice(iter(self.investigator.investigate(concept, question)), self.max_sources)
                 seen_refs: set[str] = set()
                 for candidate in candidates:
                     if not isinstance(candidate, SourceObservation):
