@@ -60,6 +60,16 @@ def _schema(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """)
+    # Existing Bridge SQLite histories remain readable on upgrade.
+    columns = {row[1] for row in conn.execute(
+        "PRAGMA table_info(cognitive_block_runs)").fetchall()}
+    if "execution_status" not in columns:
+        conn.execute(
+            "ALTER TABLE cognitive_block_runs ADD COLUMN "
+            "execution_status TEXT NOT NULL DEFAULT 'completed'")
+    if "error_summary" not in columns:
+        conn.execute(
+            "ALTER TABLE cognitive_block_runs ADD COLUMN error_summary TEXT")
     conn.commit()
 
 
@@ -213,13 +223,28 @@ class BlockRuntime:
             capability, explore=explore, rng=rng)
         if capability not in block.capabilities:
             raise ValueError("block does not implement " + capability)
-        fn = self._load(block, refresh=refresh)
-        output = fn(dict(payload), dict(context or {}))
-        if not isinstance(output, dict):
-            raise TypeError("block must return a dictionary")
-        # Validate it can be represented as a portable data block.
-        json.dumps(output, allow_nan=False)
         run_id = "block_" + uuid.uuid4().hex
+        try:
+            fn = self._load(block, refresh=refresh)
+            output = fn(dict(payload), dict(context or {}))
+            if not isinstance(output, dict):
+                raise TypeError("block must return a dictionary")
+            # Keep graph ports serializable across independent programs.
+            json.dumps(output, allow_nan=False)
+        except Exception as exc:
+            # An unusable module is an observed negative outcome. Record it
+            # and adapt selection before propagating the error to the caller.
+            self.conn.execute(
+                "INSERT INTO cognitive_block_runs "
+                "(run_id, capability, block_name, code_revision, "
+                "execution_status, error_summary) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (run_id, capability, block.name, self._revisions.get(block.name),
+                 "error", f"{type(exc).__name__}: {exc}"[:500]),
+            )
+            self.conn.commit()
+            self.feedback(run_id, -1.0)
+            raise
         self.conn.execute(
             "INSERT INTO cognitive_block_runs "
             "(run_id, capability, block_name, code_revision) VALUES (?, ?, ?, ?)",
