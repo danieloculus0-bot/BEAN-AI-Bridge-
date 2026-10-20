@@ -124,3 +124,9 @@ Raw generic normalized KPI events now require an explicit, versioned completenes
 ## Robot Motion (experimental)
 
 The [Robot Motion Emulator Lab](experiments/robot_motion/README.md) runs a shared motor interlock under native C, Arduino Nano/ATmega328P simavr, and ESP32 QEMU, with an optional token-gated ESP32 Wokwi lane. It uses synthetic test vectors, never drives robot hardware, and records separate emulator evidence. This is distinct from BEAN Core's simulated joint-state motion layer and from production motor control.
+
+## Cross-repository audit status (2026-10-20)
+
+**Generic reporting and research, not live ERP control.** Metamorphic discovery and autonomous-Bridge-improvement workflows succeeded on Oct 20. The separate [novel engineering repair workflow](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/runs/39474907359) **failed to obtain a valid model-authored repair candidate**, and downstream validation/publishing steps were skipped. These mixed results must not be presented as a successful autonomous code-repair capability. The adapter, replay and KPI tests still use synthetic or explicit offline source files, not an authenticated manufacturing ERP connector.
+
+The [portfolio-wide audit](https://github.com/danieloculus0-bot/Axiom_Beta/blob/main/docs/PORTFOLIO_AUDIT_2026-10-20.md) distinguishes this evidence/adapter project from [BEAN Core](https://github.com/danieloculus0-bot/BEAN) and [Axiom Beta](https://github.com/danieloculus0-bot/Axiom_Beta).
