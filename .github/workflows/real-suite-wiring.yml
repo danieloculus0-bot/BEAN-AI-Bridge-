@@ -53,4 +53,4 @@ jobs:
       - name: Check syntax for wiring contracts
         run: python -m compileall -q integration_tests/test_real_suite_wiring.py bean-core/bean/integration fea-core/ezfea/bean.py
       - name: Exercise real two-repository handoffs and persistent state
-        run: python -m unittest discover -s tests -p test_real_suite_wiring.py -v
+        run: python -m unittest integration_tests.test_real_suite_wiring -v
