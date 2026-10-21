@@ -140,6 +140,18 @@ def run(output: Path, *, base_dir: Path | None = None) -> dict:
         # never used in the first learning episodes.
         evaluation_concepts = ["sensor_tolerance", "calibration_code", "novel_capacitance"]
         before_correct = sum(baseline[c] == TRUTH[c] for c in evaluation_concepts)
+        # Freeze the post-restart knowledge BEFORE the first T2 investigation.
+        # Otherwise newly researched facts leak into the apparent replay score.
+        frozen_replay = {}
+        for concept in evaluation_concepts:
+            definition, lookup_status = lib.lookup(concept, T2)
+            frozen_replay[concept] = {
+                "answer": definition.value if definition else None,
+                "definition_id": definition.definition_id if definition else None,
+                "lookup_status": lookup_status,
+            }
+        frozen_correct = sum(frozen_replay[c]["answer"] == TRUTH[c]
+                             for c in evaluation_concepts)
         heldout = [
             asdict(loop.process(model, "sensor_tolerance", T2)),
             asdict(loop.process(model, "calibration_code", T2)),
@@ -147,6 +159,11 @@ def run(output: Path, *, base_dir: Path | None = None) -> dict:
         ]
         after_correct = sum(r["system_answer"] == TRUTH[r["concept"]] for r in heldout)
         model_correct = sum(bool(r["model_accepted"]) for r in heldout)
+        acquired_online = sum(
+            frozen_replay[r["concept"]]["answer"] != TRUTH[r["concept"]]
+            and r["system_answer"] == TRUTH[r["concept"]]
+            for r in heldout
+        )
         final_history = loop.history()
         compiled_index = loop.compile_evidence()
         native_packet = native.context()
@@ -169,13 +186,23 @@ def run(output: Path, *, base_dir: Path | None = None) -> dict:
         "classification": "SYNTHETIC_EVIDENCE_NO_AUTHENTICATED_LIVE_SOURCES",
         "baseline": baseline,
         "pre_restart_learning": investigated,
+        "post_restart_frozen_replay": frozen_replay,
+        "post_restart_online_learning": heldout,
+        # Legacy key retained for existing report consumers. These are ONLINE
+        # learning outcomes, not clean pre-exposure held-out predictions.
         "post_restart_heldout": heldout,
         "heldout_metrics": {
             "cases": len(heldout), "baseline_correct": before_correct,
+            "frozen_correct_after_restart": frozen_correct,
             "system_correct_after": after_correct,
+            "online_correct_after": after_correct,
+            "acquired_or_corrected_during_online_phase": acquired_online,
             "model_accepted_after": model_correct,
             "system_accuracy_before": before_correct / len(heldout),
+            "frozen_accuracy_after_restart": frozen_correct / len(heldout),
             "system_accuracy_after": after_correct / len(heldout),
+            "online_accuracy_after": after_correct / len(heldout),
+            # Gate acceptance is not the same as model accuracy.
             "model_success_after": model_correct / len(heldout),
         },
         "ledger": {
@@ -197,7 +224,9 @@ def run(output: Path, *, base_dir: Path | None = None) -> dict:
             "All evidence is synthetic and truth is known only to the fixture verifier.",
             "Model weights do not change. Improved system accuracy is deterministic knowledge retrieval, not LLM learning.",
             "The trusted verifier is provided by the host; live source authenticity, independence and ownership require separate validation.",
-            "The held-out requests are later-time and include a novel concept, but reuse synthetic source-generation rules.",
+            "Frozen replay is measured before any T2 investigation; online outcomes are scored separately.",
+            "The new concept is acquired during T2 online evaluation, NOT learned before restart or generalized.",
+            "The later-time requests reuse synthetic source-generation rules; none proves distribution shift or trained model improvement.",
             "This is a bounded research batch, not a permanent running process.",
             "A recorded uncertainty may be reopened by future observations, not terminally discarded.",
         ],
@@ -221,7 +250,7 @@ def main():
     args = parser.parse_args()
     result = run(args.out, base_dir=args.evidence_dir)
     metrics = result["heldout_metrics"]
-    if (metrics["system_correct_after"] <= metrics["baseline_correct"]
+    if (metrics["frozen_correct_after_restart"] <= metrics["baseline_correct"]
             or not result["ledger"]["native_bean_events"]
             or not result["ledger"]["native_bean_epistemic_audits"]
             or result["ledger"]["body_output_enabled"]):
