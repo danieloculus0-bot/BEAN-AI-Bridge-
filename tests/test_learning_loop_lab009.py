@@ -185,6 +185,19 @@ class LiveCoreTest(unittest.TestCase):
             self.assertEqual(report["heldout_metrics"]["system_correct_after"], 3)
             self.assertEqual(report["heldout_metrics"]["model_accepted_after"], 0)
             self.assertEqual(report["heldout_metrics"]["baseline_correct"], 0)
+            # The novel concept is first learned ONLINE at T2, not retained
+            # from earlier cycles. It must not inflate frozen replay accuracy.
+            self.assertEqual(report["heldout_metrics"]["frozen_correct_after_restart"], 2)
+            self.assertEqual(report["heldout_metrics"]["acquired_or_corrected_during_online_phase"], 1)
+            self.assertEqual(report["heldout_metrics"]["online_correct_after"], 3)
+            self.assertEqual(report["post_restart_frozen_replay"]["novel_capacitance"]["lookup_status"], "missing")
+            self.assertIsNone(report["post_restart_frozen_replay"]["novel_capacitance"]["answer"])
+            self.assertEqual(report["post_restart_frozen_replay"]["sensor_tolerance"]["answer"],
+                             TRUTH["sensor_tolerance"])
+            self.assertEqual(report["post_restart_frozen_replay"]["calibration_code"]["answer"],
+                             TRUTH["calibration_code"])
+            self.assertEqual(report["post_restart_online_learning"][2]["system_answer"],
+                             TRUTH["novel_capacitance"])
             self.assertGreater(report["ledger"]["native_bean_events"], 0)
             self.assertGreater(report["ledger"]["native_bean_epistemic_audits"], 0)
             self.assertTrue(report["ledger"]["canonical_origin_visible"])
