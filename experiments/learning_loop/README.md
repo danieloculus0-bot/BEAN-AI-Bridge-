@@ -57,11 +57,13 @@ The included test harness uses an intentionally incorrect, **unchanged** model a
 1. Start with a missing sensor tolerance, obsolete calibration code, and a contradictory safety claim.
 2. Record invalid model output, BEAN uncertainty, synthetic source observations and verifier decisions.
 3. Append new definitions only for corroborated evidence; keep the contradictory safety claim unresolved.
-4. **Close and reopen both SQLite databases** and run different, later-time requests including a new concept not in the first research batch.
-5. Calculate the before/after system metrics and a separate model-success metric. Check native BEAN context and epistemic audits.
+4. **Close and reopen both SQLite databases**, then score the frozen knowledge snapshot at T2 **before** running any new investigator or verifier. The novel concept must remain unknown in this phase.
+5. Run later-time requests including that novel concept, allow fresh evidence gathering, and score the resulting **online acquisition** separately. Check native BEAN context and epistemic audits.
 6. Preserve every cycle, evidence observation, original and revised definition, BEAN Core event, and uncertainty record. No hardware/financial actions occur.
 
-Expected deterministic fixture result: **0/3 correctly answerable before → 3/3 after; 0/3 model answers accepted**. This is a software-system improvement in a controlled fixture environment, **not** evidence that Qwen or any other model updated its weights or developed intelligence. A real live-model benchmark and authenticated web-source verifier are different, uncompleted experiments.
+Expected deterministic fixture result: **0/3 at baseline; 2/3 frozen correct after restarting, with no new evidence; 3/3 after T2 online research; 0/3 model answers accepted**. The third correct answer is acquired *during* evaluation, not retained before restart. The JSON report exposes `post_restart_frozen_replay` and `post_restart_online_learning`; `post_restart_heldout` is a backward-compatible alias for the online results and must not be presented as a blind generalization score.
+
+This demonstrates persisted retrieval and online evidence acquisition in a controlled synthetic fixture. It **does not** show neural-weight training, blind transfer to new domains, or model intelligence improving. A real live-model benchmark and authenticated independent source verification remain separate, unfinished experiments.
 
 ## Run (Linux)
 
@@ -80,7 +82,7 @@ PYTHONPATH="$PWD/src:$PWD/../bean-core:$PWD" \
 ```
 
 GitHub Actions repeats the test on Windows and Linux using pinned BEAN Core.
-**[Open CI runs for experiment branch](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/workflows/bean-native-learning-loop-lab009.yml)**. Each successful run archives:
+**[Open the cross-platform Lab009 CI workflow](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/workflows/bean-evidence-learning-loop.yml)**. Each successful run archives:
 
 - `lab009-evidence.json`: before/after and held-out outcomes, provenance, reasons, context trace IDs.
 - `lab009-audit/evidence_library.sqlite`: actual versioned library and complete cycle/receipt ledger.
