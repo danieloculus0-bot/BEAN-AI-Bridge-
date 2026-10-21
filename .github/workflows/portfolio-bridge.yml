@@ -1,0 +1,33 @@
+name: Bridge real BEAN portfolio memory
+on:
+  push:
+    branches: ['experiment/bridge-portfolio-q-state-*']
+  pull_request:
+    paths:
+      - 'src/ezbean/portfolio_bridge.py'
+      - 'tests/test_portfolio_bridge.py'
+      - '.github/workflows/portfolio-bridge.yml'
+  workflow_dispatch:
+jobs:
+  bridge:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: 5688158ce0b69699941f1dc8d40937f4f3c3cdfa
+          path: bean-core
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Replay real Bridge state and Q memory
+        env:
+          BEAN_CORE_DIR: bean-core
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p test_portfolio_bridge.py -v
