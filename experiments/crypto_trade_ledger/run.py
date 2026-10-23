@@ -237,6 +237,8 @@ def aggregate(rows):
         "best_forward_pct": round(100 * max(r["bean_return"] for r in rows), 4),
         "mean_forward_max_drawdown_pct": round(100 * statistics.mean(r["max_drawdown"] for r in rows), 4),
         "mean_forward_q_updates": round(statistics.mean(r["forward_q_updates"] for r in rows), 2),
+        "mean_forward_position_changes": round(statistics.mean(r["forward_position_changes"] for r in rows), 2),
+        "mean_modeled_transaction_cost_pct": round(statistics.mean(r["forward_position_changes"] for r in rows) * .0007 * 100, 4),
     }
 
 
@@ -282,11 +284,13 @@ def execute(aiscend, out):
                     forward_path = []
                     count_at_cut = 0
                     revisions_at_cut = 0
+                    trades_at_cut = 0
                     for i, bar in enumerate(paths[market]):
                         if i == WARMUP:
                             start_mark = state["equity"]
                             count_at_cut = sum(sum(v.values()) for v in state["visits"].values())
                             revisions_at_cut = state["behavior_revisions"]
+                            trades_at_cut = state["mock_trades"]
                             state["bootstrapped"] = True
                         event = one_step(BeanAdaptiveGrowthGate._apply_bar, state,
                                          regime=regime, seed=seed, market=market,
@@ -323,6 +327,7 @@ def execute(aiscend, out):
                         "max_drawdown": drawdown([start_mark, *forward_path]),
                         "forward_q_updates": forward_q,
                         "forward_policy_changes": changes,
+                        "forward_position_changes": state["mock_trades"] - trades_at_cut,
                         "q_state_digest": sha(canonical(state["q"])),
                     })
                 db.commit()
@@ -372,7 +377,7 @@ def execute(aiscend, out):
         "multiasset_controls": {strategy: aggregate([
             {"bean_return": x["net_return"],
              "hold_return": 0.0, "max_drawdown": x["max_drawdown"],
-             "forward_q_updates": 0} for x in multiasset_rows
+             "forward_q_updates": 0, "forward_position_changes": x["trades"]} for x in multiasset_rows
             if x["strategy"] == strategy]) for strategy in
                                 ("cash", "buy_hold", "momentum", "persistent")},
         "storage": {
