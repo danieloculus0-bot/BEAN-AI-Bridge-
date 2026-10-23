@@ -1,0 +1,50 @@
+{
+  "comparison_events": 12,
+  "comparison_gzip_sha256": "c65826d34a57b1a18ca57dd47e01391c81e17b886e2422b6d4a5e05c81e25556",
+  "comparison_tip": "f62bf68ccd0fe7a4f1c8407c5f9fd1aa41006db431fc91c123fc653a70e13d1d",
+  "conditions": {
+    "high_reuse": {
+      "full_values": 24000,
+      "gain_over_json_gzip_percent": 43.137,
+      "pair_vs_onebyte_percent": -20.726,
+      "sizes": {
+        "hierarchy_gzip": 10499,
+        "json_gzip": 15140,
+        "onebyte_gzip": 7131,
+        "pair_gzip": 8609
+      }
+    },
+    "low_reuse": {
+      "full_values": 24000,
+      "gain_over_json_gzip_percent": 66.473,
+      "pair_vs_onebyte_percent": -46.479,
+      "sizes": {
+        "hierarchy_gzip": 63733,
+        "json_gzip": 112537,
+        "onebyte_gzip": 25758,
+        "pair_gzip": 37730
+      }
+    },
+    "moderate_reuse": {
+      "full_values": 24000,
+      "gain_over_json_gzip_percent": 56.485,
+      "pair_vs_onebyte_percent": -42.076,
+      "sizes": {
+        "hierarchy_gzip": 45284,
+        "json_gzip": 57709,
+        "onebyte_gzip": 17675,
+        "pair_gzip": 25112
+      }
+    }
+  },
+  "events": 9000,
+  "events_gzip_sha256": "7d544b51ccaca7704e4972240b9e925eb78c4a94bd70476f721d7b401114c9e0",
+  "ledger_tip": "75e66debfaf1bed0b83f337a7babb830daffa3ce3ddd86fda98bf8b6d62357f0",
+  "q_learning_updates": 0,
+  "roundtrip_and_sqlite_restart": true,
+  "runtime_changes": false,
+  "schema": "bean.bridge.pair_replay.v1",
+  "seed": 220261022,
+  "synthetic": true,
+  "values": 72000
+}
