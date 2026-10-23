@@ -1,0 +1,166 @@
+{
+  "actual_policy": "AIscend.src.bean_growth_adaptive.BeanAdaptiveGrowthGate._apply_bar",
+  "all_tracks": {
+    "bean_mean_forward_pct": -1.9673,
+    "bean_median_forward_pct": -1.8328,
+    "beat_cash": 10,
+    "beat_hold": 132,
+    "best_forward_pct": 7.7378,
+    "hold_mean_forward_pct": -4.1118,
+    "losing_tracks": 182,
+    "mean_forward_max_drawdown_pct": 2.601,
+    "mean_forward_q_updates": 80,
+    "tracks": 192,
+    "worst_forward_pct": -5.9383
+  },
+  "assets": [
+    "BTC-USD",
+    "ETH-USD",
+    "SOL-USD",
+    "DOGE-USD"
+  ],
+  "by_regime": {
+    "downtrend": {
+      "bean_mean_forward_pct": -1.9842,
+      "bean_median_forward_pct": -1.7076,
+      "beat_cash": 1,
+      "beat_hold": 47,
+      "best_forward_pct": 0.6441,
+      "hold_mean_forward_pct": -6.0845,
+      "losing_tracks": 47,
+      "mean_forward_max_drawdown_pct": 2.2788,
+      "mean_forward_q_updates": 80,
+      "tracks": 48,
+      "worst_forward_pct": -5.5881
+    },
+    "sideways": {
+      "bean_mean_forward_pct": -1.5684,
+      "bean_median_forward_pct": -1.1461,
+      "beat_cash": 3,
+      "beat_hold": 26,
+      "best_forward_pct": 1.6264,
+      "hold_mean_forward_pct": -1.7106,
+      "losing_tracks": 45,
+      "mean_forward_max_drawdown_pct": 2.3606,
+      "mean_forward_q_updates": 80,
+      "tracks": 48,
+      "worst_forward_pct": -4.6135
+    },
+    "trend_reversal": {
+      "bean_mean_forward_pct": -2.8482,
+      "bean_median_forward_pct": -2.6165,
+      "beat_cash": 0,
+      "beat_hold": 48,
+      "best_forward_pct": -0.6342,
+      "hold_mean_forward_pct": -8.9594,
+      "losing_tracks": 48,
+      "mean_forward_max_drawdown_pct": 3.1202,
+      "mean_forward_q_updates": 80,
+      "tracks": 48,
+      "worst_forward_pct": -5.9383
+    },
+    "uptrend": {
+      "bean_mean_forward_pct": -1.4683,
+      "bean_median_forward_pct": -1.7034,
+      "beat_cash": 6,
+      "beat_hold": 11,
+      "best_forward_pct": 7.7378,
+      "hold_mean_forward_pct": 0.3072,
+      "losing_tracks": 42,
+      "mean_forward_max_drawdown_pct": 2.6446,
+      "mean_forward_q_updates": 80,
+      "tracks": 48,
+      "worst_forward_pct": -4.9753
+    }
+  },
+  "forward_bars": 80,
+  "forward_policy_revisions": 1909,
+  "ledger": {
+    "chain_tip": "d60978fd2460a5a59dcaecd02995ad429309b8b9d145fee41e027d2b282e31ca",
+    "duplicate_rejected": true,
+    "events": 46080,
+    "restarted_original_replay": true
+  },
+  "live_market_prices": false,
+  "model_fee_per_position_change": 0.0007,
+  "multiasset_controls": {
+    "buy_hold": {
+      "bean_mean_forward_pct": -4.6029,
+      "bean_median_forward_pct": -3.9903,
+      "beat_cash": 4,
+      "beat_hold": 4,
+      "best_forward_pct": 1.6043,
+      "hold_mean_forward_pct": 0.0,
+      "losing_tracks": 44,
+      "mean_forward_max_drawdown_pct": 4.7284,
+      "mean_forward_q_updates": 0,
+      "tracks": 48,
+      "worst_forward_pct": -10.7671
+    },
+    "cash": {
+      "bean_mean_forward_pct": 0.0,
+      "bean_median_forward_pct": 0.0,
+      "beat_cash": 0,
+      "beat_hold": 0,
+      "best_forward_pct": 0.0,
+      "hold_mean_forward_pct": 0.0,
+      "losing_tracks": 0,
+      "mean_forward_max_drawdown_pct": 0.0,
+      "mean_forward_q_updates": 0,
+      "tracks": 48,
+      "worst_forward_pct": 0.0
+    },
+    "momentum": {
+      "bean_mean_forward_pct": -12.1743,
+      "bean_median_forward_pct": -12.5934,
+      "beat_cash": 0,
+      "beat_hold": 0,
+      "best_forward_pct": 0.0,
+      "hold_mean_forward_pct": 0.0,
+      "losing_tracks": 47,
+      "mean_forward_max_drawdown_pct": 12.2927,
+      "mean_forward_q_updates": 0,
+      "tracks": 48,
+      "worst_forward_pct": -30.1464
+    },
+    "persistent": {
+      "bean_mean_forward_pct": -5.8403,
+      "bean_median_forward_pct": -5.7895,
+      "beat_cash": 1,
+      "beat_hold": 1,
+      "best_forward_pct": 1.2387,
+      "hold_mean_forward_pct": 0.0,
+      "losing_tracks": 46,
+      "mean_forward_max_drawdown_pct": 6.3132,
+      "mean_forward_q_updates": 0,
+      "tracks": 48,
+      "worst_forward_pct": -13.8772
+    }
+  },
+  "q_feedback_updates": 45888,
+  "real_exchange_fills": 0,
+  "regimes": [
+    "uptrend",
+    "downtrend",
+    "sideways",
+    "trend_reversal"
+  ],
+  "research_kind": "deterministic_synthetic_paper_trading",
+  "research_limits": "Synthetic regimes, Q learning continues causally during forward evaluation; no frozen-policy holdout, no Coinbase data, no shared multi-asset Q portfolio, no claim of profitability or learning transfer.",
+  "schema": "bridge.crypto.twochar.v1",
+  "seeds_per_regime": 12,
+  "separate_single_asset_tracks": 192,
+  "starting_bankroll_per_independent_track_usd": 1000.0,
+  "storage": {
+    "full_gzip_bytes": 7812663,
+    "full_jsonl_bytes": 42320979,
+    "original_decompressed_sha256": "976600ba02b41205808d1772553c1e4774ebf69b617397819dfa5b09fa09dcc4",
+    "percent_gzip_saved": 1.077,
+    "symbol_codebook_sha256": "751696f2e3602a8a19d6c843009ac58a93fb9a869cfa17bb4f8fc4652f8fa198",
+    "symbolic_decompressed_sha256": "6aae24ae9e44b34c138b562908e16ef1182a36c76d17736a4462df4cfc60f35b",
+    "symbolic_gzip_bytes": 7728485,
+    "symbolic_plus_dictionary_jsonl_bytes": 38649084
+  },
+  "total_events": 46080,
+  "warmup_bars": 160
+}
