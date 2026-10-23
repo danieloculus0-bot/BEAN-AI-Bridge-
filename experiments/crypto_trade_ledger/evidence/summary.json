@@ -9,7 +9,9 @@
     "hold_mean_forward_pct": -4.1118,
     "losing_tracks": 182,
     "mean_forward_max_drawdown_pct": 2.601,
+    "mean_forward_position_changes": 20.75,
     "mean_forward_q_updates": 80,
+    "mean_modeled_transaction_cost_pct": 1.4525,
     "tracks": 192,
     "worst_forward_pct": -5.9383
   },
@@ -29,7 +31,9 @@
       "hold_mean_forward_pct": -6.0845,
       "losing_tracks": 47,
       "mean_forward_max_drawdown_pct": 2.2788,
+      "mean_forward_position_changes": 16.27,
       "mean_forward_q_updates": 80,
+      "mean_modeled_transaction_cost_pct": 1.139,
       "tracks": 48,
       "worst_forward_pct": -5.5881
     },
@@ -42,7 +46,9 @@
       "hold_mean_forward_pct": -1.7106,
       "losing_tracks": 45,
       "mean_forward_max_drawdown_pct": 2.3606,
+      "mean_forward_position_changes": 22.77,
       "mean_forward_q_updates": 80,
+      "mean_modeled_transaction_cost_pct": 1.594,
       "tracks": 48,
       "worst_forward_pct": -4.6135
     },
@@ -55,7 +61,9 @@
       "hold_mean_forward_pct": -8.9594,
       "losing_tracks": 48,
       "mean_forward_max_drawdown_pct": 3.1202,
+      "mean_forward_position_changes": 18.38,
       "mean_forward_q_updates": 80,
+      "mean_modeled_transaction_cost_pct": 1.2863,
       "tracks": 48,
       "worst_forward_pct": -5.9383
     },
@@ -68,7 +76,9 @@
       "hold_mean_forward_pct": 0.3072,
       "losing_tracks": 42,
       "mean_forward_max_drawdown_pct": 2.6446,
+      "mean_forward_position_changes": 25.58,
       "mean_forward_q_updates": 80,
+      "mean_modeled_transaction_cost_pct": 1.7908,
       "tracks": 48,
       "worst_forward_pct": -4.9753
     }
@@ -93,7 +103,9 @@
       "hold_mean_forward_pct": 0.0,
       "losing_tracks": 44,
       "mean_forward_max_drawdown_pct": 4.7284,
+      "mean_forward_position_changes": 1,
       "mean_forward_q_updates": 0,
+      "mean_modeled_transaction_cost_pct": 0.07,
       "tracks": 48,
       "worst_forward_pct": -10.7671
     },
@@ -106,7 +118,9 @@
       "hold_mean_forward_pct": 0.0,
       "losing_tracks": 0,
       "mean_forward_max_drawdown_pct": 0.0,
+      "mean_forward_position_changes": 0,
       "mean_forward_q_updates": 0,
+      "mean_modeled_transaction_cost_pct": 0.0,
       "tracks": 48,
       "worst_forward_pct": 0.0
     },
@@ -119,7 +133,9 @@
       "hold_mean_forward_pct": 0.0,
       "losing_tracks": 47,
       "mean_forward_max_drawdown_pct": 12.2927,
+      "mean_forward_position_changes": 18.56,
       "mean_forward_q_updates": 0,
+      "mean_modeled_transaction_cost_pct": 1.2994,
       "tracks": 48,
       "worst_forward_pct": -30.1464
     },
@@ -132,7 +148,9 @@
       "hold_mean_forward_pct": 0.0,
       "losing_tracks": 46,
       "mean_forward_max_drawdown_pct": 6.3132,
+      "mean_forward_position_changes": 6.58,
       "mean_forward_q_updates": 0,
+      "mean_modeled_transaction_cost_pct": 0.4608,
       "tracks": 48,
       "worst_forward_pct": -13.8772
     }
