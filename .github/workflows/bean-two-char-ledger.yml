@@ -1,0 +1,83 @@
+name: BEAN two-character ledger reproducibility
+
+on:
+  push:
+    branches:
+      - experiment/two-character-ledger-replay-20261022
+    paths:
+      - 'experiments/two_character_ledger/bootstrap.py'
+      - 'experiments/two_character_ledger/reproduce.py.gz.b64'
+      - 'experiments/two_character_ledger/README.md'
+      - '.github/workflows/bean-two-char-ledger.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.11'
+            retain: false
+          - os: ubuntu-latest
+            python: '3.12'
+            retain: true
+          - os: windows-latest
+            python: '3.12'
+            retain: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Expand and authenticate research source
+        shell: bash
+        run: python experiments/two_character_ledger/bootstrap.py --extract-only
+      - name: Reproduce all original-value ledger events
+        shell: bash
+        run: python experiments/two_character_ledger/reproduce.py --out experiments/two_character_ledger/generated
+      - name: Independently check source reconstruction and retained counts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip,hashlib,json,sqlite3
+          p=Path('experiments/two_character_ledger/generated')
+          o=json.loads((p/'scoreboard.json').read_text())
+          expected={'events_full.jsonl.gz':('29f97009d9e235628f063701942266c662b2b827ede0cfc4973677693c1a85c2',9000),'comparison_events.jsonl.gz':('66098d3a984211e96d136aa9fc646e1309d3ad0d0b81cda5ab69025375b6e383',12)}
+          for name,(sha,n) in expected.items():
+              packed=(p/name).read_bytes()
+              assert hashlib.sha256(packed).hexdigest()==sha,name
+              assert len(gzip.decompress(packed).splitlines())==n,name
+          db=sqlite3.connect(p/'events.sqlite')
+          assert db.execute('SELECT COUNT(*) FROM events').fetchone()[0]==9000
+          assert o['values']==72000 and o['q_learning_updates']==0
+          print('verified 9,000 events and 72,000 original values')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bean-two-char-${{ runner.os }}-${{ matrix.python }}
+          path: experiments/two_character_ledger/generated/
+          retention-days: 30
+      - name: Retain the exact archive and readable source in the research branch
+        if: matrix.retain && github.event_name == 'push' && github.ref_name == 'experiment/two-character-ledger-replay-20261022'
+        shell: bash
+        run: |
+          mkdir -p experiments/two_character_ledger/evidence
+          cp experiments/two_character_ledger/generated/events_full.jsonl.gz experiments/two_character_ledger/evidence/
+          cp experiments/two_character_ledger/generated/comparison_events.jsonl.gz experiments/two_character_ledger/evidence/
+          cp experiments/two_character_ledger/generated/scoreboard.json experiments/two_character_ledger/evidence/
+          cp experiments/two_character_ledger/generated/events.sqlite experiments/two_character_ledger/evidence/
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add experiments/two_character_ledger/reproduce.py experiments/two_character_ledger/evidence/
+          if ! git diff --cached --quiet; then
+            git commit -m 'research: retain independently replayed source and original-value ledger'
+            git push origin HEAD:experiment/two-character-ledger-replay-20261022
+          fi
