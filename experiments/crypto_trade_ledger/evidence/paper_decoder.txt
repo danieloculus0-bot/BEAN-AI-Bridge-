@@ -1,0 +1,29 @@
+BEAN CRYPTO SYMBOL DECODER / VERSION 1
+
+Each event has eight readable characters:
+MMRRAAPP
+market (MM), regime (RR), Q action (AA), exposure (PP)
+
+MARKET
+M1 = BTC-USD
+M2 = ETH-USD
+M3 = SOL-USD
+M4 = DOGE-USD
+
+REGIME
+R1 = uptrend
+R2 = downtrend
+R3 = sideways
+R4 = trend_reversal
+
+ACTION
+A1 = momentum
+A2 = reversion
+A3 = trend_3
+A4 = buy_hold
+A5 = cash
+
+EXPOSURE
+P0 = CASH
+P1 = LONG
+
