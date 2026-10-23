@@ -1,0 +1,87 @@
+name: BEAN AIscend compressed crypto ledger stress test
+
+on:
+  push:
+    branches:
+      - experiment/crypto-trade-compressed-ledger-20261022
+    paths:
+      - 'experiments/crypto_trade_ledger/**'
+      - '.github/workflows/bean-crypto-compressed-ledger.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  trade-ledger:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.12'
+            retain: true
+          - os: windows-latest
+            python: '3.12'
+            retain: false
+    steps:
+      - name: Checkout Bridge
+        uses: actions/checkout@v4
+      - name: Checkout pinned AIscend source
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/AIscend
+          ref: 27e72a340e3a3437b3bee1c781c809941806a79d
+          path: _aiscend
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify compiled research adapter
+        run: python -m py_compile experiments/crypto_trade_ledger/run.py
+      - name: Run Q-policy across 46,080 five-minute observations
+        run: python experiments/crypto_trade_ledger/run.py --aiscend _aiscend --out experiments/crypto_trade_ledger/generated
+      - name: Recover and verify paper codebook and original event digests
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip,hashlib,json,sqlite3
+          from pathlib import Path
+          p=Path('experiments/crypto_trade_ledger/generated')
+          s=json.loads((p/'summary.json').read_text())
+          assert s['total_events']==46080
+          assert s['q_feedback_updates']==45888
+          assert s['ledger']['restarted_original_replay']
+          assert s['ledger']['duplicate_rejected']
+          with sqlite3.connect(p/'trade_events.sqlite') as db:
+              assert db.execute('SELECT COUNT(*) FROM events').fetchone()[0]==46080
+          original=gzip.decompress((p/'trade_events_full.jsonl.gz').read_bytes())
+          assert hashlib.sha256(original).hexdigest()==s['storage']['original_decompressed_sha256']
+          print('verified paper codebook, Q reward event ledger, and 46,080 exact observations')
+          PY
+      - name: Save complete compressed trading evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-crypto-ledger-${{ runner.os }}
+          path: experiments/crypto_trade_ledger/generated/
+          retention-days: 30
+      - name: Persist replayable evidence in GitHub research branch
+        if: matrix.retain && github.event_name == 'push' && github.ref_name == 'experiment/crypto-trade-compressed-ledger-20261022'
+        shell: bash
+        run: |
+          mkdir -p experiments/crypto_trade_ledger/evidence
+          cp experiments/crypto_trade_ledger/generated/trade_events_full.jsonl.gz experiments/crypto_trade_ledger/evidence/
+          cp experiments/crypto_trade_ledger/generated/trade_events_symbolic.jsonl.gz experiments/crypto_trade_ledger/evidence/
+          cp experiments/crypto_trade_ledger/generated/track_results.jsonl.gz experiments/crypto_trade_ledger/evidence/
+          cp experiments/crypto_trade_ledger/generated/summary.json experiments/crypto_trade_ledger/evidence/
+          cp experiments/crypto_trade_ledger/generated/paper_decoder.txt experiments/crypto_trade_ledger/evidence/
+          cp experiments/crypto_trade_ledger/generated/trade_events.sqlite experiments/crypto_trade_ledger/evidence/
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add experiments/crypto_trade_ledger/evidence/
+          if ! git diff --cached --quiet; then
+            git commit -m 'research: retain BEAN simulated crypto Q trade event ledger'
+            git push origin HEAD:experiment/crypto-trade-compressed-ledger-20261022
+          fi
