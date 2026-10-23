@@ -10,7 +10,7 @@ From the repository root, with Python 3.11 or later:
 
 The bootstrap checks two SHA-256 digests, expands the readable Python experiment from its archived source payload, and executes it. All operations are offline, stdlib-only, deterministic and use generated synthetic data. Subsequent runs may invoke the expanded reproduce.py directly. To retain multiple trials, give each run a separate --out directory.
 
-The replay builds events.sqlite with 9,000 exact original-value events, events_full.jsonl.gz with all 72,000 original field values and SHA-linked provenance, comparison_events.jsonl.gz with 12 comparison receipts, scoreboard.json, and the reversible payloads for JSON, two-character, one-byte and four-tier hierarchy experiments. Source entries and digests are rebuilt from SQLite after close/reopen, not guessed from the aggregate scoreboard. With a stable zlib implementation, the archive and size digests reproduce exactly.
+The replay builds events.sqlite with 9,000 exact original-value events, events_full.jsonl.gz with all 72,000 original field values and SHA-linked provenance, comparison_events.jsonl.gz with 12 comparison receipts, scoreboard.json, and the reversible payloads for JSON, two-character, one-byte and four-tier hierarchy experiments. Source entries and digests are rebuilt from SQLite after close/reopen, not guessed from the aggregate scoreboard. Decompressed event content and hash-chain receipts reproduce exactly. The compressed gzip bytes and package sizes can differ with Python/zlib versions, so those are environment-specific measurements rather than cross-platform identity assertions.
 
 ## Confirmed synthetic storage results (bytes, complete package)
 
@@ -45,6 +45,8 @@ The workflow [bean-two-char-ledger.yml](../../.github/workflows/bean-two-char-le
 
 - [Core compressed scoring ledger](https://github.com/danieloculus0-bot/BEAN/blob/experiment/anticipatory-ledger-20261020/research/PERSISTENT_LEDGER.md)
 - [Information Balloon Q-controlled compression, PR #147](https://github.com/danieloculus0-bot/BEAN/pull/147) (separate real Q-update experiment, not rerun here)
+- [Bridge portfolio-learning adapter, PR #47](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/pull/47): existing `BridgePortfolioLedger` stores compact concept IDs, obtains BEAN Core policy context, separates memory observations from evaluated Q-reward receipts, and verifies replay. **Reuse this when integrating hierarchical indexes; do not build a parallel learner.**
+- [Bridge frozen replay Lab009, PR #46](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/pull/46): distinguishes persisted context from new online evidence so restored memory isn't mistaken for learning.
 - [Bridge format-fidelity experiment, PR #44](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/pull/44)
 
 Evidence label: SYNTHETIC. BEAN Core runtime, BEAN Bridge runtime, and hosted connector remain distinct. No unproven reasoning improvements or external outcomes are claimed.
