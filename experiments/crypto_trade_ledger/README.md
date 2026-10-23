@@ -23,6 +23,22 @@ Runs with Python 3.12, standard library only; Windows PowerShell and Linux. GitH
 - Separately run AIscend's **existing multi-asset historical backtest** for cash, buy-hold BTC, momentum, and persistent policy families at the research module's 0.6% per-side cost stress. This is **not** directly fee-comparable with the 0.07% learner; the groups are reported separately.
 - No live market prices, Coinbase orders, verified exchange fills, live balances, model-weight updates, portfolio aggregation, or real-world profitability are asserted.
 
+## Measured results from the initial 46,080-event synthetic run
+
+| Fixed synthetic regime | Q learner mean forward return | Same-asset buy/hold mean | Average long/cash exposure changes |
+| --- | ---: | ---: | ---: |
+| Rising | -1.4683% | +0.3072% | 25.58 |
+| Falling | -1.9842% | -6.0845% | 16.27 |
+| Sideways | -1.5684% | -1.7106% | 22.77 |
+| Trend reversal | -2.8482% | -8.9594% | 18.38 |
+
+Across **192 independent hypothetical $1,000 tracks**, BEAN's average forward return was **-1.9673%**, and it lost money on 182 of 192 paths. It beat the cash control only 10/192 times and the buy/hold comparator 132/192 times (predominantly defensive outcomes). The Q policy made 45,888 independently measured state/feedback updates, with 1,909 behavior revisions, but these do not prove a generalizable learning advantage.
+
+Average exposure changes were **20.75 over 80 five-minute forward bars**, giving about **1.4525% modeled cumulative transaction-cost fraction** at 0.07% per position change, before precise compounding. This is a likely drag, not a proven causal decomposition of losses. Reducing change frequency warrants a separate causal A/B experiment with identical datasets, fees and held-out conditions; do not silently alter the production trade policy.
+
+The full evidence log is 7,812,663 bytes gzipped; replacing four repeated textual fields with the printable codebook yields 7,728,485 bytes including the full dictionary (**1.077% reduction**). This far smaller saving than earlier string-heavy ledger tests is a critical finding: hashes, price numbers, Q digests and source receipts dominate the retained history. The human-readable decoder may be the more valuable feature than compression.
+
+**No economic win, no verified exchange profitability, no production strategy promotion.** These are deterministic synthetic scenarios with forward online updates, not independently collected future Coinbase data.
 ## Printed decoder
 
 Every original event contains market, regime, Q action, and exposure. A printable `paper_decoder.txt` lets a person decode codes without hexadecimal tools. The string `M1R2A3P1` means `BTC-USD / downtrend / trend_3 / LONG`. These **readable references are identifiers**, not layers required for recovery, and their definitions are versioned.
