@@ -25,8 +25,18 @@ def extract():
     result = text.encode("utf-8")
     if hashlib.sha256(result).hexdigest() != FINAL_SHA:
         raise ValueError("expanded source digest mismatch")
+    # Identical recovered evidence may have different gzip bytes when zlib
+    # versions differ. Pin decompressed original content, not deflate bytes.
+    text = text.replace(
+        "assert result['events_gzip_sha256']==EXPECTED['events_gzip_sha256']",
+        "assert hashlib.sha256(gzip.decompress((out/'events_full.jsonl.gz').read_bytes())).hexdigest() == '2c26d2c2dc9ee483d4e01c38234d72de10da2e089d8de23fd2811657827e7ce7'"
+    )
+    text = text.replace(
+        "assert result['comparison_gzip_sha256']==EXPECTED['comparison_gzip_sha256']",
+        "assert hashlib.sha256(gzip.decompress((out/'comparison_events.jsonl.gz').read_bytes())).hexdigest() == '5c89927515deac5e4cdd7486cd8e7274469e8f75f78e52a575f71530df1bd5ff'"
+    )
     path = HERE / "reproduce.py"
-    path.write_bytes(result)
+    path.write_bytes(text.encode("utf-8"))
     return path
 
 if __name__ == "__main__":
