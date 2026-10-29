@@ -133,7 +133,7 @@ def run(out_dir: Path, use_bean: bool = False) -> dict:
                'baseline': before, 'corrected': after,
                'escape_reduction_percent': str((Decimal(before['customer_escape'] - after['customer_escape']) * 100 / Decimal(before['customer_escape'])).quantize(Decimal('.01'))),
                'native_bean_reflection': reflection,
-               'assumptions': 'All incidence, detection and prevention rates are synthetic hypotheses, not company historical rates.'}
+               'assumptions': 'All incidence, detection and prevention rates are synthetic hypotheses, not an employer historical rates.'}
     (out_dir / 'summary.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
     (out_dir / 'sample_case.json').write_text(json.dumps(case_one, indent=2), encoding='utf-8')
     return summary
