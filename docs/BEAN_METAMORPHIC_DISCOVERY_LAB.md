@@ -15,7 +15,7 @@ Each run generates synthetic reporting events across jobs, RMAs and production a
 
 The random seed, generated synthetic events, cutoff representations, observed before/after KPI values, invariant names and affected domains are preserved in a SHA256-bound JSON receipt.
 
-**A finding is not a proven root cause**, and a source-asserted complete snapshot is not an authenticated complete snapshot. Calendar normalization must follow a documented UTC or explicitly configured site-local policy. The synthetic probes never contain company records or customer information.
+**A finding is not a proven root cause**, and a source-asserted complete snapshot is not an authenticated complete snapshot. Calendar normalization must follow a documented UTC or explicitly configured site-local policy. The synthetic probes never contain an employer records or customer information.
 
 ## Separation of roles
 
