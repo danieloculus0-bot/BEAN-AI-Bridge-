@@ -25,7 +25,7 @@ Follow the [full earlier README](docs/archive/README_2026-10-20_before_refresh.m
 
 ## Known limitations
 
-- No authenticated live connection to company or any particular ERP system is established by synthetic fixtures.
+- No authenticated live connection to an employer or any particular ERP system is established by synthetic fixtures.
 - Passing event transport does not show generalized AI autonomy or deployable automatic code repairs.
 - A single unverified observation must not be misrepresented as independently corroborated evidence.
 
