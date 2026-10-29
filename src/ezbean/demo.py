@@ -1,4 +1,4 @@
-"""Run synthetic ERP events through the bridge. No real company data is included."""
+"""Run synthetic ERP events through the bridge. No real an employer data is included."""
 import argparse
 import json
 from pathlib import Path
