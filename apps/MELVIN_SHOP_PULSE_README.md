@@ -45,6 +45,6 @@ The included parser reads conventional XLSX first-sheet cells (inline/shared str
 
 ## Deployment boundaries
 
-Public-safe fictional data only. No real company customer, personnel, supplier, machine serial, order, account or ERP data is packaged. Before a company rollout, validate actual JobBoss² field semantics and the official OTD/RMA counting definitions, establish authorized read-only access, add identity and authorization controls, and complete source reconciliation.
+Public-safe fictional data only. No real any employer customer, personnel, supplier, machine serial, order, account or ERP data is packaged. Before a company rollout, validate actual JobBoss² field semantics and the official OTD/RMA counting definitions, establish authorized read-only access, add identity and authorization controls, and complete source reconciliation.
 
 Source: https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/blob/main/apps/melvin_shop_pulse.html
