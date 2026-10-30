@@ -313,7 +313,11 @@ class BlockRuntime:
             reference = value["$from"].split(".")
             current = values[reference[0]]
             for key in reference[1:]:
-                current = current[key]
+                # Event streams and candidate lists are ordinary JSON arrays.
+                # Without numeric array ports, Scratch-style compositions
+                # cannot take an observed event's structured data into the
+                # next cognitive block.
+                current = current[int(key)] if isinstance(current, list) else current[key]
             return current
         if isinstance(value, dict):
             return {k: BlockRuntime._wire(v, values)
