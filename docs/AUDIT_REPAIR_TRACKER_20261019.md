@@ -26,13 +26,35 @@ evidence of generalizable cognition or a new neural model. Existing Bridge
 Lab010 policy remains separate and uses simulated rewards; nothing here spends
 money or acts on real machinery.
 
+## Connected cognition increment (2026-10-19)
+
+Core now exposes structured experiment intake, drive evaluation and local
+reasoning as Bridge-discoverable modules. Core's existing goal engine can create
+executable curiosity-driven experiment goals and mark their outcomes. Bridge
+`CognitiveDispatcher` consumes those goals, chooses locally available modules,
+tests untried alternatives, scores known observations, and writes outcomes back
+to Core's real event and question tables. The existing Core tick scheduler can
+invoke this dispatcher. The [cross-repository CI run](https://github.com/danieloculus0-bot/BEAN-AI-Bridge-/actions/runs/39259555957)
+passed all six jobs; the [Core full regression](https://github.com/danieloculus0-bot/BEAN/actions/runs/39259043472)
+passed all four. See [CONNECTED_COGNITION.md](CONNECTED_COGNITION.md).
+
+The first task family is structured and measurable. This does not yet
+autonomously generate hypotheses from arbitrary natural-language questions or
+make a genuine language-model-directed tool plan.
+
+Follow-up Core repairs improve repeated operation: pending curiosity goals
+are deduplicated across cognition cycles, and the compact local Ollama prompt
+retains selected previous measured module outcomes alongside the newest
+events. The demo's withheld synthetic comparison reports 0/4 correct for the
+unchanged first method and 4/4 for Bridge's feedback-selected method. These
+four hand-designed cases are not evidence of wider generalization.
+
 ## Remaining work, in useful increments
 
-1. **End-to-end autonomous local experiment dispatch.** Existing curiosity,
-   goals, drives, reasoning and Bridge modules must negotiate a task, choose an
-   available local tool, observe a result and update future behavior without a
-   human scripting each step. Currently module selection/feedback is callable,
-   not independently goal-driven.
+1. **Naturally generated question -> tool planning.** Curiosity, goals,
+   drives, reasoning and Bridge modules are now connected for structured
+   observable experiments. Extend the loop to interpret spontaneous questions,
+   form testable hypotheses and choose relevant available tools dynamically.
 2. **Generalization tests.** Expand beyond hand-designed binary forecasts.
    Use new unseen task families, matched cold/memory/placebo comparisons, and
    repetitions. A successful deterministic sample is only an integration proof.
@@ -64,6 +86,9 @@ money or acts on real machinery.
   `fix/audit-learning-reliability-20261019` (PR #130).
 - Bridge `main` -> `feature/cognitive-blocks-20261019` (PR #36) ->
   `fix/audit-learning-reliability-20261019` (PR #37).
+- Next: Core `feature/connected-cognition-20261019` based on Core audit
+  fixes; Bridge `feature/connected-cognition-20261019` based on Bridge audit
+  fixes. Both remain draft/experimental.
 
 The branches are intentionally unmerged drafts. Bridge's audit CI fetches
 the corresponding Core audit branch to exercise real cross-repository calls.

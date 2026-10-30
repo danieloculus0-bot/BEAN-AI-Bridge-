@@ -1,8 +1,8 @@
-name: BEAN Bridge Cognitive Blocks and Learning Reliability
+name: BEAN Connected Cognition and Learning
 
 on:
   push:
-    branches: [feature/cognitive-blocks-20261019, fix/audit-learning-reliability-20261019]
+    branches: [feature/cognitive-blocks-20261019, fix/audit-learning-reliability-20261019, feature/connected-cognition-20261019]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: danieloculus0-bot/BEAN
-          ref: fix/audit-learning-reliability-20261019
+          ref: feature/connected-cognition-20261019
           path: _bean_core
       - name: Python
         uses: actions/setup-python@v5
@@ -39,7 +39,11 @@ jobs:
       - name: Exercise bridge-to-core graph and learning
         env:
           BEAN_CORE_PATH: ${{ github.workspace }}/_bean_core
-        run: python -m pytest tests/test_cognitive_blocks.py tests/test_audit_learning_failure_records.py tests/test_audit_module_reload.py tests/test_learning_loop_lab009.py -q -ra
+        run: python -m pytest tests/test_cognitive_blocks.py tests/test_audit_learning_failure_records.py tests/test_audit_module_reload.py tests/test_learning_loop_lab009.py tests/test_cognitive_dispatch.py -q -ra
+      - name: Execute Core-to-Bridge cognitive demo
+        env:
+          PYTHONPATH: src
+        run: python -m examples.connected_cognition --core "${{ github.workspace }}/_bean_core"
 
   full-bridge-regression:
     strategy:
