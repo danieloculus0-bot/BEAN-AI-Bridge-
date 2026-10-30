@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bean-ai-bridge"
-version = "0.1.0b1"
+version = "0.1.0b2"
 description = "BEAN offline operational evidence and experimental logic-module bridge"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -22,6 +22,8 @@ bean-export = "ezbean.jobboss_exports:main"
 bean-brief = "ezbean.daily_brief:main"
 bean-pilot = "ezbean.pilot:main"
 bean-backup = "ezbean.backup:main"
+bean-run = "ezbean.operations_run:main"
+bean-doctor = "ezbean.doctor:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
