@@ -54,7 +54,7 @@ jobs:
                   if len(meta)<3: raise ValueError('invalid object')
                   data=proc.stdout.read(int(meta[2]))
                   proc.stdout.read(1)
-                  if meta[1] == b'blob' and rex.search(data): bad+=1
+                  if meta[1] == b'blob' and rex.search(data):\n                      bad+=1\n                      print('REMAINING_BLOB',obj.decode(),[x.split(b' ',1)[1].hex() for x in records if x.startswith(obj+b' ')],flush=True)
           finally:
               proc.stdin.close()
               proc.stdout.close()
