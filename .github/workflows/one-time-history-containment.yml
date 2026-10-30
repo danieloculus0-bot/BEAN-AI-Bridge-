@@ -33,7 +33,8 @@ jobs:
           cd /tmp/history.git
           original=$(git rev-parse refs/heads/main)
           if [ "$original" != "$GITHUB_SHA" ]; then echo "REDACTION_ABORT HEAD changed"; exit 2; fi
-          git filter-repo --force --prune-empty never --replace-text /tmp/replace.txt --replace-message /tmp/replace.txt --filename-callback "$(cat /tmp/rename_callback.txt)"
+          printf 'ef19ecd674730427f1ea671504140d48b26673dd\n' > /tmp/remove-blobs.txt
+          git filter-repo --force --prune-empty never --strip-blobs-with-ids /tmp/remove-blobs.txt --replace-text /tmp/replace.txt --replace-message /tmp/replace.txt --filename-callback "$(cat /tmp/rename_callback.txt)"
           python3 - <<'PYCODE'
           import re, subprocess, sys
           patterns = [bytes.fromhex(s) for s in [ "283f6929283f3c215b612d7a302d395d29283f3a57617368696e67746f6e7c576973636f6e73696e295b5c732e5f2d5d2b4d6574616c5b5c732e5f2d5d2b46616272696361746f72733f283f215b612d7a302d395d29", "283f6929283f3c215b612d7a302d395d29455a5b5c732e5f2d5d2a4661627269636174696e67283f215b612d7a302d395d29", "283f6929283f3c215b612d7a302d395d29455a5b5c732e5f2d5d2a4661627269636174696f6e283f215b612d7a302d395d29", "283f6929283f3c215b612d7a302d395d29455a5b5c732e5f2d5d2a466162733f283f215b612d7a302d395d29", "283f6929283f3c215b612d7a302d395d29455a5b5c732e5f2d5d2a574d46283f215b612d7a302d395d29", "283f6929283f3c215b612d7a302d395d29574d46283f215b612d7a302d395d29" ]]
