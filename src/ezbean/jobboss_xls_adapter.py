@@ -146,7 +146,9 @@ def convert(source, layout_path, *, expected_lines, expected_late):
 
             # A numeric subtotal with no shipment fields is not a line.
             supplied = [values.get(k, "") for k in ("DateShipped", "DueDate", "QtyShipped")]
-            if not any(supplied):
+            if not values.get("DateShipped") and not values.get("DueDate"):
+                # Numeric report subtotals may include quantity but no dates.
+                # Required independent reconciliation catches missing real lines.
                 continue
             if not all(supplied):
                 raise ValueError(f"Incomplete shipment row at source row {i + 1}")
