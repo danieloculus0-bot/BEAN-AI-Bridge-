@@ -109,6 +109,24 @@ class LegacyShipmentAdapterTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Reconciliation failed"):
             convert(self.source, self.layout, expected_lines=3, expected_late=0)
 
+    def test_write_failure_removes_only_new_partial_output(self):
+        dest = self.root / "incomplete.csv"
+        argv = ["jobboss_xls_adapter", "--source", str(self.source),
+                "--layout", str(self.layout),
+                "--expected-lines", "3", "--expected-late", "1",
+                "--output", str(dest)]
+        with patch.object(sys, "argv", argv):
+            with patch("ezbean.jobboss_xls_adapter.csv.DictWriter") as writer:
+                writer.return_value.writerows.side_effect = OSError("synthetic disk failure")
+                with self.assertRaisesRegex(OSError, "synthetic disk failure"):
+                    main()
+        self.assertFalse(dest.exists())
+        dest.write_text("PRESERVE EXISTING", encoding="utf-8")
+        with patch.object(sys, "argv", argv):
+            with self.assertRaises(FileExistsError):
+                main()
+        self.assertEqual(dest.read_text(encoding="utf-8"), "PRESERVE EXISTING")
+
     def test_wrong_map_bad_file_and_unknown_headers_fail_closed(self):
         self.layout.write_text(json.dumps({
             "start_row": 0, "record_indicator_column": 6,
