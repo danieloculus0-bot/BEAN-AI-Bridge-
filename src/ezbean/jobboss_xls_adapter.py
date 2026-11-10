@@ -104,7 +104,9 @@ def convert(source, layout_path, *, expected_lines, expected_late):
         raise ValueError("Expected an existing legacy .xls source file")
     if path.stat().st_size > MAX_SOURCE_SIZE:
         raise ValueError("Legacy report exceeds import size limit")
-    if path.open("rb").read(8) != bytes.fromhex("D0CF11E0A1B11AE1"):
+    with path.open("rb") as source_file:
+        signature = source_file.read(8)
+    if signature != bytes.fromhex("D0CF11E0A1B11AE1"):
         raise ValueError("Not a legacy OLE/BIFF .xls workbook")
     if type(expected_lines) is not int or expected_lines <= 0:
         raise ValueError("A positive independent expected line count is required")
@@ -197,10 +199,17 @@ def main():
     if args.output:
         # A failed reconciliation never creates output, and an existing file is
         # never overwritten. Source and output must remain on authorized storage.
-        with args.output.open("x", encoding="utf-8", newline="") as fh:
-            writer = csv.DictWriter(fh, fieldnames=FIELDS)
-            writer.writeheader()
-            writer.writerows(rows)
+        # Open first; never remove an existing destination if open("x") fails.
+        # Remove newly created partial output if writing fails.
+        fh = args.output.open("x", encoding="utf-8", newline="")
+        try:
+            with fh:
+                writer = csv.DictWriter(fh, fieldnames=FIELDS)
+                writer.writeheader()
+                writer.writerows(rows)
+        except BaseException:
+            args.output.unlink(missing_ok=True)
+            raise
         summary["output_created"] = True
     print(json.dumps(summary, sort_keys=True))
 
