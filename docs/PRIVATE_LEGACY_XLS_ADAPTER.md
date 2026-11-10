@@ -31,7 +31,10 @@ headers, continuation rows, blank job numbers, reconciliation failures,
 source-file rejection, and importer handoff on Windows and Linux.
 
 Limit: this does not prove compatibility with any specific private report.
-The adapter retains blank-job shipment records in the imported snapshot,
-but the current ExportSponge.report OTD logic still omits certain blank-job
-rows. The verified CSV row count must not be presented as a verified OTD
-denominator until the separate blank-job exception policy is implemented.
+The adapter retains blank-job shipment records in the existing ledger.
+Bridge reporting counts these records separately under
+unverifiable_due_date_shipment_lines (latest snapshot only), excludes them
+from job-traceable OTD, and emits an aggregate management data-quality gap.
+The reconciled CSV row count includes these exceptions, but the OTD
+denominator excludes them. Unverifiable promise dates require a separate
+authorized source, not an assumed on-time classification.
