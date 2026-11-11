@@ -125,5 +125,12 @@ class ManagementIntelligenceTests(unittest.TestCase):
                          "JOB-SUPER-SECRET","SECRET_VENDOR_REASON"):
             self.assertNotIn(sentinel,serialized)
 
+    def test_missing_job_shipments_produce_aggregate_gap_without_ids(self):
+        raw=report()
+        raw["metrics"]["unverifiable_due_date_shipment_lines"]=2
+        result=analyze_site("SITE_A",raw)
+        self.assertIn("SHIPMENT_DUE_DATE_UNVERIFIABLE",{g["code"] for g in result["gaps"]})
+        self.assertEqual(result["data_quality_counts"]["unverifiable_due_date_shipment_lines"],2)
+
 if __name__=="__main__":
     unittest.main()

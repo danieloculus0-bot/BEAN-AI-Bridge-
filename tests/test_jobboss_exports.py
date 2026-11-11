@@ -178,5 +178,27 @@ class JobBossSpongeTests(unittest.TestCase):
         before=self.store.report("2026-09-01","2026-09-29T18:00:00Z")
         self.assertIsNone(before["metrics"]["past_due_open_job_lines"])
 
+    def test_blank_job_shipments_are_unverifiable_not_otd_credit(self):
+        data=[row_ship("PK1","J1","9/2/2026","9/1/2026",2),
+              row_ship("PK2","","9/2/2026","9/2/2026",2)]
+        self.store.ingest(self.shipment(rows=data))
+        rep=self.store.report("2026-09-01","2026-10-01T00:00:00Z")
+        metrics=rep["metrics"]
+        self.assertEqual(metrics["shipment_lines"],1)
+        self.assertEqual(metrics["on_time_shipment_lines"],0)
+        self.assertEqual(metrics["unverifiable_due_date_shipment_lines"],1)
+        self.assertEqual(metrics["otd_percent_by_shipment_line"],0.0)
+        self.assertEqual(len(rep["evidence"]["unverifiable_due_date_row_refs"]),1)
+
+    def test_unverifiable_counts_only_latest_snapshot_not_duplicate_imports(self):
+        data=[row_ship("PK1","","9/2/2026","9/2/2026",2)]
+        self.store.ingest(self.shipment(rows=data))
+        self.store.ingest(self.shipment(
+            "Shipment Summary - Detail Report - 2026-10-01T080000.000.csv",rows=data))
+        rep=self.store.report("2026-09-01","2026-10-02T00:00:00Z")
+        self.assertIsNone(rep["metrics"]["otd_percent_by_shipment_line"])
+        self.assertEqual(rep["metrics"]["shipment_lines"],0)
+        self.assertEqual(rep["metrics"]["unverifiable_due_date_shipment_lines"],1)
+
 if __name__=="__main__":
     unittest.main()

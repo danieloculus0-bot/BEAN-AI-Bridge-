@@ -311,6 +311,19 @@ class ExportSponge:
             shipped_date=_calendar_date(row.get("DateShipped"),"DateShipped")
             if start<=shipped_date<=end and _count(row.get("QtyShipped"),"QtyShipped")>0:
                 shipment_rows.append((ref,row))
+        # No job reference means no independently supported promise-date lineage.
+        # Keep these rows as explicit exceptions from the latest export only;
+        # never treat a report-run-date placeholder as an on-time promise.
+        unverified_job_rows=[]
+        if shipment:
+            for ref,row in self.records(shipment[0]):
+                if str(row.get("JobNumber") or "").strip():
+                    continue
+                if not str(row.get("PackingList") or "").strip():
+                    continue
+                shipped_date=_calendar_date(row.get("DateShipped"),"DateShipped")
+                if shipped_date and start<=shipped_date<=end and _count(row.get("QtyShipped"),"QtyShipped")>0:
+                    unverified_job_rows.append((ref,row))
         shipped_on_time=[(ref,row) for ref,row in shipment_rows
             if _calendar_date(row.get("DateShipped"),"DateShipped") <= _calendar_date(row.get("DueDate"),"DueDate")]
         verified_early_late=0
@@ -357,6 +370,7 @@ class ExportSponge:
               "shipment_lines":len(shipment_rows) if shipment else None,
               "on_time_shipment_lines":len(shipped_on_time) if shipment else None,
               "partially_shipped_lines":partially_shipped if shipment else None,
+              "unverifiable_due_date_shipment_lines":len(unverified_job_rows) if shipment else None,
               "past_due_open_job_lines":(len(due) if schedule and not unverified_shipping_state else None),
               "schedule_due_date_lines":due_date_lines if schedule else None,
               "schedule_missing_shipped_quantity_lines":unverified_shipping_state if schedule else None,
@@ -375,10 +389,12 @@ class ExportSponge:
           "quarantined_rma_rows":quarantined,
           "evidence":{
               "shipment_row_refs":[ref for ref,_ in shipment_rows],
+              "unverifiable_due_date_row_refs":[ref for ref,_ in unverified_job_rows],
               "past_due_row_refs":due,
               "rma_row_refs":[ref for ref,_ in rmas]},
           "limitations":[
-              "OTD denominator is shipped report lines, not complete jobs or orders.",
+              "OTD includes only shipped lines with a traceable job; blank-job due dates are unverifiable and excluded.",
+              "Unverifiable blank-job shipment counts are from the most recent export snapshot only, not merged across snapshots.",
               "Shipment exports are merged by packing list, job, date, order and description; source coverage must be verified.",
               "Job Schedule is a captured snapshot; only the latest available schedule is used.",
               "Missing job shipped quantity makes open/past-due status N/A, not zero.",

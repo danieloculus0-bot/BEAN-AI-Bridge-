@@ -51,6 +51,9 @@ def analyze_site(site: str, report: dict) -> dict:
     elif not raw["shipment_lines"]:
         gaps.append(_gap("SHIPMENT_LINES_EMPTY",
                          "No shipping lines meet this report window; OTD is not determinable."))
+    if raw.get("unverifiable_due_date_shipment_lines",0):
+        gaps.append(_gap("SHIPMENT_DUE_DATE_UNVERIFIABLE",
+                         "Shipment lines without a verified job reference are excluded from OTD. Reconcile their source promise dates."))
     if v.get("status")=="conflicted":
         gaps.append(_gap("SHIPMENT_DATE_CONFLICT",
                          "JobBOSS DaysEarlyLate disagrees with shipped-minus-due dates; reconcile the report."))
@@ -128,6 +131,7 @@ def analyze_site(site: str, report: dict) -> dict:
             "missing_schedule_shipping_status":raw.get("schedule_missing_shipped_quantity_lines"),
             "shipment_day_conflicts":v.get("conflicting_lines"),
             "shipment_day_checks":v.get("reconciled_lines"),
+            "unverifiable_due_date_shipment_lines":raw.get("unverifiable_due_date_shipment_lines"),
         },
     }
 
