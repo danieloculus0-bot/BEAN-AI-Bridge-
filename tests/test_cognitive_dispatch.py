@@ -72,18 +72,33 @@ def test_curiosity_forms_executable_goals_and_feeds_outcomes_back_to_memory(conn
                                       reflection_interval=500)
     handlers.run_due(1, session, {"session_uuid": session})
     assert next(h for h in handlers.summary() if h["name"] == "cognitive_experiments")["run_count"] == 1
-    assert get_store().fetchone("SELECT status FROM curiosity WHERE id=?",
-                                (question_id,))["status"] == "answered"
+    # The first attempted predictor is wrong. The question must stay open
+    # until an alternative is tried, rather than treating failure as an answer.
     assert get_store().fetchone(
-        "SELECT COUNT(*) FROM cognition_goal_proposals WHERE action_type='run_experiment' AND status='completed'"
-    )[0] == 1
-
-    # Once an observation has been processed, the same question is not retried.
-    assert dispatcher.poll(session) == []
+        "SELECT status FROM curiosity WHERE id=?", (question_id,)
+    )["status"] == "open"
     first = get_store().fetchone(
         "SELECT id, data FROM events WHERE subtype='cognitive_module_experiment' ORDER BY id DESC LIMIT 1"
     )
     first_payload = json.loads(first["data"])
+    assert first_payload["matched"] is False
+    assert get_store().fetchone(
+        "SELECT COUNT(*) FROM events WHERE subtype='experiment_result'"
+    )[0] == 0
+
+    tried_again = dispatcher.poll(session)
+    assert len(tried_again) == 1
+    assert tried_again[0]["block"] != first_payload["block"]
+    assert tried_again[0]["matched"] is True
+    assert get_store().fetchone(
+        "SELECT status FROM curiosity WHERE id=?", (question_id,)
+    )["status"] == "answered"
+    assert get_store().fetchone(
+        "SELECT COUNT(*) FROM cognition_goal_proposals WHERE action_type='run_experiment' AND status='completed'"
+    )[0] == 2
+
+    # Resolved questions stop generating new work.
+    assert dispatcher.poll(session) == []
     assert first_payload["question_id"] == question_id
     assert first_payload["capability"] == "binary_forecast"
     assert first_payload["reward"] in (-1.0, 1.0)
@@ -99,7 +114,7 @@ def test_curiosity_forms_executable_goals_and_feeds_outcomes_back_to_memory(conn
     second = dispatcher.poll(session)
     assert len(second) == 1
     assert second[0]["question_id"] == q2
-    assert second[0]["block"] != first_payload["block"]
+    assert second[0]["block"] in ("bean.mean_sign", "bean.last_sign")
 
     # Bridge retains its method preferences after SQLite restart.
     old_preference = runner.preference("binary_forecast", second[0]["block"])
@@ -185,8 +200,10 @@ def test_runnable_end_to_end_demo_reports_actual_method_experience(tmp_path):
     from examples.connected_cognition import run
     results = run(core_root=os.environ["BEAN_CORE_PATH"],
                   data_dir=tmp_path / "demo")
-    assert len(results["trials"]) == 4
-    assert sum(results["bridge_visits"].values()) == 4
+    assert len(results["trials"]) >= 4
+    assert all(item["matched"] for item in results["trials"] if item["method"] == "bean.mean_sign")
+    assert any(not item["matched"] for item in results["trials"])
+    assert sum(results["bridge_visits"].values()) >= 4
     assert results["core_answered"] == 4
     assert results["holdout"] == {
         "cases": 4, "cold_correct": 0, "learned_correct": 4,
@@ -194,3 +211,91 @@ def test_runnable_end_to_end_demo_reports_actual_method_experience(tmp_path):
     assert results["learned_preference"] in ("bean.mean_sign", "bean.last_sign")
     assert (tmp_path / "demo" / "core.sqlite").exists()
     assert (tmp_path / "demo" / "bridge.sqlite").exists()
+
+
+def test_failed_hypotheses_do_not_resolve_question_and_new_module_can_reopen_work(connected):
+    session, runner, new_runner, tmp_path = connected
+    from bean.memory.store import get_store
+    for name, value in (("wrong_a", 10), ("wrong_b", 20)):
+        folder = tmp_path / name
+        folder.mkdir()
+        (folder / "logic.py").write_text(
+            'def run(data, context):\n    return {"answer": ' + str(value) + '}\n',
+            encoding="utf-8",
+        )
+        runner.register({
+            "name": name, "entrypoint": "logic:run",
+            "capabilities": ["experimental_math"],
+            "source": {"local_root": str(folder), "module_file": "logic.py"},
+        })
+
+    result = runner.run("observe_experiment", {
+        "session_uuid": session,
+        "capability": "experimental_math",
+        "inputs": {"x": 7},
+        "expected_output": {"answer": 42},
+    })
+    question_id = result["output"]["question_id"]
+    dispatcher = CognitiveDispatcher(runner)
+    attempts = dispatcher.poll(session) + dispatcher.poll(session)
+    assert len(attempts) == 2
+    assert {attempt["block"] for attempt in attempts} == {"wrong_a", "wrong_b"}
+    assert all(attempt["matched"] is False for attempt in attempts)
+    assert get_store().fetchone("SELECT status FROM curiosity WHERE id=?",
+                                (question_id,))["status"] == "open"
+    assert get_store().fetchone(
+        "SELECT COUNT(*) FROM events WHERE subtype='experiment_result'"
+    )[0] == 0
+
+    # Exhaustion is not permission to mark the unknown answer as known.
+    assert dispatcher.poll(session) == []
+    assert dispatcher.poll(session) == []
+    assert get_store().fetchone(
+        "SELECT COUNT(*) FROM cognition_goal_proposals WHERE action_type='run_experiment'"
+    )[0] == 2
+
+    # Adding a new cognitive capability lets BEAN continue the same question.
+    folder = tmp_path / "working_new"
+    folder.mkdir()
+    (folder / "logic.py").write_text(
+        'def run(data, context):\n    return {"answer": 42}\n',
+        encoding="utf-8",
+    )
+    runner.register({
+        "name": "working_new", "entrypoint": "logic:run",
+        "capabilities": ["experimental_math"],
+        "source": {"local_root": str(folder), "module_file": "logic.py"},
+    })
+    resumed = dispatcher.poll(session)
+    assert len(resumed) == 1
+    assert resumed[0]["block"] == "working_new"
+    assert resumed[0]["matched"] is True
+    assert get_store().fetchone("SELECT status FROM curiosity WHERE id=?",
+                                (question_id,))["status"] == "answered"
+
+
+def test_missing_expected_output_key_is_not_accidental_match(connected):
+    session, runner, new_runner, tmp_path = connected
+    from bean.memory.store import get_store
+    folder = tmp_path / "missing_key"
+    folder.mkdir()
+    (folder / "logic.py").write_text(
+        'def run(data, context):\n    return {"other": 3}\n',
+        encoding="utf-8",
+    )
+    runner.register({
+        "name": "missing_key", "entrypoint": "logic:run",
+        "capabilities": ["question_with_none"],
+        "source": {"local_root": str(folder), "module_file": "logic.py"},
+    })
+    result = runner.run("observe_experiment", {
+        "session_uuid": session, "capability": "question_with_none",
+        "inputs": {}, "expected_output": {"missing": None},
+    })
+    qid = result["output"]["question_id"]
+    attempt = CognitiveDispatcher(runner).poll(session)
+    assert len(attempt) == 1
+    assert attempt[0]["matched"] is False
+    assert get_store().fetchone(
+        "SELECT status FROM curiosity WHERE id=?", (qid,)
+    )["status"] == "open"
