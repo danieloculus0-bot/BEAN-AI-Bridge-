@@ -49,6 +49,6 @@ def manifest() -> dict:
             "module_file": "src/ezbean/bean_blocks.py",
             "python_root": "src",
             "git_url": "https://github.com/danieloculus0-bot/BEAN-AI-Bridge-.git",
-            "ref": "feature/cognitive-blocks-20261019",
+            "ref": "test/engine-firing-sweep-20261019",
         },
     }

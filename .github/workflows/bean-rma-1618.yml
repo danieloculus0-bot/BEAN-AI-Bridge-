@@ -27,6 +27,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install dependencies for full mixed unittest/pytest suite
+        run: python -m pip install pytest psutil
       - name: Compile
         run: python -m compileall -q src
       - name: Existing generic regression suite
