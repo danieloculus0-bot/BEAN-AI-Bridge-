@@ -1,0 +1,119 @@
+name: BEAN integrated engine firing sweep
+
+on:
+  push:
+    branches: [test/engine-firing-sweep-20261019]
+  pull_request:
+    branches: [feature/pilot-readiness-five-20261019]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wiring-and-continuity:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    env:
+      BEAN_CORE_PATH: ${{ github.workspace }}/_bean_core
+      PYTHONPATH: src
+    steps:
+      - name: Checkout Bridge and experimental wiring
+        uses: actions/checkout@v4
+      - name: Checkout corresponding BEAN Core engine
+        uses: actions/checkout@v4
+        with:
+          repository: danieloculus0-bot/BEAN
+          ref: fix/engine-firing-sweep-20261019
+          path: _bean_core
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test dependencies
+        run: python -m pip install pytest psutil
+      - name: Compile all existing Core and Bridge cognitive code
+        run: python -m compileall -q src/ezbean _bean_core/bean
+      - name: Start actual Core runtime for two ticks and inspect persistent cognitive writes
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import sqlite3
+          import subprocess
+          import sys
+          import tempfile
+          from pathlib import Path
+          core=Path(os.environ["BEAN_CORE_PATH"])
+          with tempfile.TemporaryDirectory(prefix="bean-live-tick-") as folder:
+              db=Path(folder)/"simulated-engine.sqlite"
+              cmd=[sys.executable,str(core/"bean_run.py"),"--db",str(db),
+                   "--ticks","2","--hz","100","--no-seed"]
+              # Reproduce Windows consoles that still default to cp1252.
+              env=dict(os.environ)
+              env["PYTHONIOENCODING"]="cp1252"
+              proc=subprocess.run(cmd,cwd=str(core),capture_output=True,
+                                  text=True,timeout=90,env=env)
+              if proc.returncode:
+                  print(proc.stdout)
+                  print(proc.stderr)
+                  raise RuntimeError("The real BEAN runtime failed to start and tick")
+              conn=sqlite3.connect(str(db))
+              try:
+                  events=conn.execute("SELECT event_type, COUNT(*) FROM events GROUP BY event_type").fetchall()
+                  types=dict(events)
+                  consolidation=conn.execute("SELECT COUNT(*) FROM cognition_consolidations").fetchone()[0]
+                  sessions=conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+                  print("ACTUAL_CORE_TICKS="+str(types)+" consolidations="+str(consolidation))
+                  assert sessions == 1, sessions
+                  assert types.get("session_start", 0) == 1, types
+                  assert types.get("session_end", 0) == 1, types
+                  assert types.get("reflection", 0) >= 1, types
+                  assert consolidation >= 1, types
+                  assert types.get("memory_consolidation", 0) >= 1, types
+                  handler_failures=conn.execute(
+                      "SELECT COUNT(*) FROM events WHERE subtype='tick_handler_error'"
+                  ).fetchone()[0]
+                  assert handler_failures == 0, (
+                      "Runtime tick handlers crashed: "+str(handler_failures)
+                  )
+              finally:
+                  conn.close()
+          PY
+      - name: Verify Core runtime and original cognitive regression
+        run: python -m pytest _bean_core/bean/tests/test_engine_firing_sweep.py _bean_core/bean/tests/test_learning_flow_regressions.py -q -ra
+      - name: Verify cross-repository event-to-memory-to-feedback-to-restart circuit
+        run: python -m pytest tests/test_engine_bus_sweep.py tests/test_cognitive_blocks.py tests/test_audit_module_reload.py tests/test_audit_learning_failure_records.py -q -ra
+      - name: Full pre-existing Bridge regression
+        run: python -m unittest discover -s tests -v
+      - name: Record engine communication verdict
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          out={"schema":"BEAN_ENGINE_FIRING_SWEEP_V1","synthetic":True,
+          "core_branch":"fix/engine-firing-sweep-20261019",
+          "bridge_branch":"test/engine-firing-sweep-20261019",
+          "tests_requested":["core reflection/curiosity","goal coalescing",
+          "reasoning evidence context","structured event memory recall",
+          "Bridge numeric-array ports","Bridge method selection and feedback",
+          "restart continuity","full Bridge unit suite"],
+          "limits":["This integration is explicitly wired by tests, not a default autonomous loop.",
+          "No LLM generalization, hardware, paid data or customer usage proved."]}
+          Path("engine-firing-observation.json").write_text(json.dumps(out,indent=2)+"\n")
+          PY
+      - name: Attach evidence for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-engine-firing-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: engine-firing-observation.json
+          if-no-files-found: ignore
+          retention-days: 14
