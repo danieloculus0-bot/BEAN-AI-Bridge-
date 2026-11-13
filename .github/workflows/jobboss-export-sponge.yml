@@ -3,7 +3,8 @@ name: BEAN JobBOSS export sponge smoke
 on:
   push:
     branches:
-      - feature/jobboss-spreadsheet-sponge-20261010
+      - main
+      - promote/jobboss-evidence-sponge-20261010
   pull_request:
     branches: [main]
   workflow_dispatch:

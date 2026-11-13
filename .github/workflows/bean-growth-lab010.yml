@@ -1,0 +1,46 @@
+name: Bridge Lab010 executed growth policy
+on:
+  push:
+    branches:
+      - 'experiment/bean-executed-growth-learning-lab010-*'
+    paths:
+      - 'src/ezbean/growth_sim.py'
+      - 'tests/test_growth_sim.py'
+      - 'experiments/growth_bridge/**'
+      - '.github/workflows/bean-growth-lab010.yml'
+  pull_request:
+    paths:
+      - 'src/ezbean/growth_sim.py'
+      - 'tests/test_growth_sim.py'
+      - 'experiments/growth_bridge/**'
+      - '.github/workflows/bean-growth-lab010.yml'
+  workflow_dispatch:
+
+jobs:
+  execute-and-grade:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Assert adaptive behavior and persistence
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p test_growth_sim.py -v
+      - name: Train, execute, adopt, independently replay
+        env:
+          PYTHONPATH: src
+        run: python -m ezbean.growth_sim --train 300 --holdouts 100 --out growth-lab-output
+      - name: Require measured synthetic improvement
+        run: python -c "import json; d=json.load(open('growth-lab-output/results.json')); assert d['passed_synthetic_gate'], d"
+      - name: Preserve policy and executed action traces
+        uses: actions/upload-artifact@v4
+        with:
+          name: growth-lab010-${{ matrix.os }}
+          path: growth-lab-output/
+          if-no-files-found: error

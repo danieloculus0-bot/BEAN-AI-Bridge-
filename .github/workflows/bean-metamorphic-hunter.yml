@@ -1,0 +1,80 @@
+name: BEAN independent metamorphic defect discovery
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '51 13 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/bean_metamorphic_hunter.py'
+      - 'tests/test_bean_metamorphic_hunter.py'
+      - '.github/workflows/bean-metamorphic-hunter.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/bean_metamorphic_hunter.py'
+      - 'tests/test_bean_metamorphic_hunter.py'
+      - '.github/workflows/bean-metamorphic-hunter.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bean-metamorphic-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    name: Independent BEAN invariant stress test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      PYTHONPATH: src
+      BEAN_SEED: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile independent explorer and tests
+        run: python -m compileall -q tools/bean_metamorphic_hunter.py tests/test_bean_metamorphic_hunter.py
+      - name: Falsify hunter protocol
+        run: python -m unittest discover -s tests -p test_bean_metamorphic_hunter.py -v
+      - name: Discover distinct reporting invariant violations from random synthetic fixtures
+        run: python tools/bean_metamorphic_hunter.py --seed "$BEAN_SEED" --trials 60 --receipt .bean-hunter/evidence.json
+        shell: bash
+      - name: Report failures as failures to the peer engineer, not as CI success claims
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path('.bean-hunter/evidence.json')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as out:
+              out.write('## BEAN synthetic invariant discovery\n')
+              if path.exists():
+                  report = json.loads(path.read_text())
+                  out.write('Status: ' + report['status'] + '\n\n')
+                  out.write('Metamorphic comparisons: ' + str(report['invariant_checks']) + '\n\n')
+                  out.write('Observed violations: ' + str(report['finding_occurrences']) + '\n\n')
+                  out.write('Distinct violation families: ' + str(report['distinct_finding_families']) + '\n\n')
+                  out.write('Seed: ' + str(report['seed']) + '\n\n')
+              else:
+                  out.write('No evidence receipt created: instrumentation failure.\n')
+          PY
+      - name: Preserve synthetic repro receipts for BEAN Core/Bridge peer review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bean-synthetic-hunter-${{ matrix.os }}-${{ github.run_id }}
+          path: .bean-hunter/evidence.json
+          if-no-files-found: warn
+          retention-days: 21

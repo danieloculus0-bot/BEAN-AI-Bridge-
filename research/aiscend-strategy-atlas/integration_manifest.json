@@ -1,0 +1,51 @@
+{
+  "schema": "bean.aiscend.research_integration.v1",
+  "aiscend_repository": "danieloculus0-bot/AIscend",
+  "aiscend_revision": "a8cea61d27f2ed495017cb7224d47cc65c49f706",
+  "database_path": "research/strategy_atlas/strategy_research.sqlite3.gz",
+  "database_sha256": "36c576afd7b5c4fe2392167ced6bceea67e6c60cf388557c012b8c52a8393107",
+  "context_path": "research/strategy_atlas/BEAN_CONTEXT.json",
+  "context_sha256": "61d1ca0f7103f872b4ae10cc254eabbc25a823d2ff188db9fa3277f0f387271b",
+  "database_stats": {
+    "assets_with_usd_prices": 1603,
+    "data_sources": 27,
+    "documents": 105,
+    "experiment_events": 0,
+    "families": {
+      "allocation": 12,
+      "baseline": 6,
+      "breakout": 8,
+      "carry_arbitrage": 12,
+      "control": 9,
+      "cross_section": 12,
+      "defi": 12,
+      "event": 12,
+      "execution": 6,
+      "macro": 6,
+      "market_making": 12,
+      "models": 23,
+      "narrative": 12,
+      "onchain": 12,
+      "options": 15,
+      "patterns": 71,
+      "reversal": 13,
+      "stat_arb": 10,
+      "trend": 20,
+      "volume": 6
+    },
+    "historical_asset_days": 1953796,
+    "history_chunks": 2235,
+    "sources": 75,
+    "strategies": 289
+  },
+  "adapter_mode": "research_evidence_only",
+  "actual_core_model_inference_performed": false,
+  "trading_profitability_test_performed": false,
+  "local_validation": {
+    "aiscend_new_contract_tests": 12,
+    "aiscend_existing_regressions": 24,
+    "bridge_contract_tests": 3,
+    "actual_context_import": "passed"
+  },
+  "archive_workflow": "https://github.com/danieloculus0-bot/AIscend/actions/runs/40127279406"
+}

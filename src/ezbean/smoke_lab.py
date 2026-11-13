@@ -18,10 +18,13 @@ REQUIRED_PHASES = {
     "python": ("package_install", "cli_smoke"),
     "iso": ("package_install", "boot_structure", "guest_boot", "first_run"),
     "release": ("package_install", "boot_structure", "guest_boot", "first_run", "persistent_reboot"),
+    "puppy": ("kernel_source_guard", "lean_core_package_boundary", "runtime_overlay", "ram_copy_verified", "persistence_reboot", "external_app_modules"),
 }
 
 
 def assess(report: dict, required: tuple[str, ...]) -> dict:
+    if not required:
+        raise ValueError("Smoke gate must declare at least one required check")
     if not isinstance(report, dict) or not isinstance(report.get("checks"), dict):
         raise ValueError("Expected report object with checks dictionary")
     checks = report["checks"]
@@ -56,6 +59,8 @@ def assess(report: dict, required: tuple[str, ...]) -> dict:
 def evaluate(report: dict, phase: str, ledger_path: Path, repetitions: int = 3) -> dict:
     if phase not in REQUIRED_PHASES:
         raise ValueError(f"Unknown phase: {phase}")
+    if not isinstance(report, dict) or report.get("phase") != phase:
+        raise ValueError("Report phase must match the requested smoke gate")
     if repetitions < 2 or repetitions > 100:
         raise ValueError("repetitions must be 2..100")
     result = assess(report, REQUIRED_PHASES[phase])

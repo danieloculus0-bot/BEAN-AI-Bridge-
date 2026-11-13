@@ -1,0 +1,27 @@
+name: AIscend narrative research evidence
+on:
+  pull_request:
+    paths:
+      - 'src/ezbean/market_research.py'
+      - 'tools/aiscend_research_context.py'
+      - 'tests/test_market_research.py'
+      - 'research/aiscend-strategy-atlas/**'
+      - '.github/workflows/aiscend-research-context.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: PYTHONPATH=src python -m unittest discover -s tests -p 'test_market_research.py' -v
+      - run: python tools/aiscend_research_context.py --context research/aiscend-strategy-atlas/BEAN_CONTEXT.json --ledger artifacts/market-research.sqlite3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AIscend-BEAN-narrative-research-ledger
+          path: artifacts/market-research.sqlite3
+          retention-days: 90
